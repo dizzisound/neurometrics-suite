@@ -1,0 +1,33 @@
+<nav
+  style="
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+    background: #343a40;
+    color: white;
+  "
+>
+  <span>NeuroApp v1.0</span>
+
+  <!-- Se isAuthenticated() è vero, mostra i controlli clinici -->
+  @if (authService.isAuthenticated()) {
+    <div>
+      <span style="margin-right: 15px"
+        >Dott. {{ authService.currentUser() }} ({{ authService.userRole() }})</span
+      >
+      <button
+        (click)="authService.logout()"
+        style="
+          background: #dc3545;
+          border: none;
+          color: white;
+          padding: 5px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+        "
+      >
+        Esci
+      </button>
+    </div>
+  }
+</nav>

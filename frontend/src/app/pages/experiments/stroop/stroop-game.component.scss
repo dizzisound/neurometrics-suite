@@ -1,0 +1,102 @@
+
+/**
+ * Stili per il test di Stroop con monitoraggio degli errori
+ * Gestisce la configurazione del recipiente sperimentale, la calibrazione tipografica,
+ * l'effetto Stroop, la croce di fissazione e il feedback d'errore.
+ * Utilizza colori nello standard sRGB con luminanza controllata e impedisce qualsiasi interazione o distrazione visiva.
+ */
+
+/* 
+  1. CONFIGURAZIONE DEL RECIPIENTE SPERIMENTALE
+  Utilizziamo colori nello standard sRGB con luminanza controllata.
+  Impediamo qualsiasi interazione o distrazione visiva.
+*/
+.experiment-viewport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  
+  /* Grigio scuro calibrato (Luminanza ~15-20% del bianco massimo) */
+  background-color: #1a1a1a !important; 
+  
+  /* Rimuove i cursori del mouse e impedisce la selezione del testo */
+  cursor: none !important; 
+  user-select: none;
+  -webkit-user-select: none;
+  
+  /* Elimina scrollbar spurie che alterano la percezione spaziale */
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* 
+  2. CALIBRAZIONE TIPOGRAFICA ED EFFETTO STROOP
+  I colori scelti (Rosso e Verde) devono essere bilanciati nello spazio sRGB 
+  per avere un contrasto simile rispetto allo sfondo #1a1a1a.
+*/
+.stroop-stimulus {
+  /* Font San-Serif pulito per evitare artefatti visivi sui bordi (anti-aliasing) */
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 5.5rem; /* ~88px, ottimale per una distanza di 60cm dallo schermo */
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-align: center;
+  
+  /* Forziamo l'accelerazione hardware per il rendering istantaneo */
+  transform: translateZ(0); 
+  will-change: color, content;
+}
+
+/* Rosso sperimentale: desaturato per evitare l'abbagliamento e l'effetto post-immagine */
+.color-target-red {
+  color: #ff4d4d !important;
+}
+
+/* Verde sperimentale: calibrato in luminanza per eguagliare la percezione del rosso sopra */
+.color-target-green {
+  color: #2ecc71 !important;
+}
+
+/* 
+  3. LA CROCE DI FISSAZIONE
+  Deve essere visibile ma non deve lasciare una persistenza retinica (afterimage).
+*/
+.fixation-cross {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 6rem;
+  font-weight: 300;
+  /* Grigio medio calibrato: intensità identica alla media dei colori degli stimoli */
+  color: #7f8c8d; 
+  transform: translateZ(0);
+}
+
+/* 
+  4. FEEDBACK D'ERRORE AD IMPATTO CONTROLLATO
+  Il feedback deve essere chiaro ma non deve indurre una risposta di "startle" (spavento) 
+  eccessiva che altererebbe l'ISI successivo.
+*/
+.feedback-error {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 6.5rem;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+/* 
+  Animazione opzionale controllata per il feedback (effetto shake micro)
+  Serve a segnalare l'errore senza modificare la luminosità globale della stanza.
+*/
+@keyframes micro-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+.shake-animation {
+  animation: micro-shake 0.15s ease-in-out;
+}

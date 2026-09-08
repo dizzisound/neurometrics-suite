@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022" /* Versione JavaScript moderna */,
+    "module": "commonjs" /* Standard di moduli per Node.js */,
+    "lib": ["ES2022"] /* Librerie dei tipi incluse */,
+    "outDir": "./dist" /* Cartella di destinazione dei file compilati */,
+    "rootDir": "./src" /* Cartella sorgente */,
+    "strict": true /* Attiva tutti i controlli rigidi sui tipi */,
+    "esModuleInterop": true /* Supporto per importazioni vecchie moduli js */,
+    "skipLibCheck": true /* Velocizza la compilazione saltando i file di tipi .d.ts esterni */,
+    "forceConsistentCasingInFileNames": true /* Evita bug di maiuscole/minuscole tra Windows e Linux/Mac */
+  },
+  "include": ["src/**/*"] /* Compila solo quello che c'è in src */
+}

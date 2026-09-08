@@ -1,0 +1,13 @@
+{
+  "name": "neurometrics-suite",
+  "version": "1.0.0",
+  "description": "Batteria di Test Cognitivi Digitali con Analisi dei Tempi di Reazione",
+  "license": "ISC",
+  "author": "Daniele Zerbini",
+  "type": "module",
+  "main": "main.ts",
+  "scripts": {
+    "start-all": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run start\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
