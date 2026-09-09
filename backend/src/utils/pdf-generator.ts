@@ -163,10 +163,13 @@ reportRouter.get('/patients/:patientId/report-pdf', verifyJwt, async (req: Authe
             }
 
             // 3. Scelta del colore della barra in base alla gravità clinica (standard visivi)
+            // Tutte le metriche qui confrontate (interferenza, falsi allarmi, tau) sono "più alto
+            // = peggio": un paziente compromesso ha un valore SUPERIORE alla media di popolazione,
+            // quindi uno Z-Score positivo. La direzione preoccupante è quindi Z >= soglia, non <=.
             let barColor = '#2ecc71'; // Verde (Norma)
-            if (item.value <= -2.0) {
+            if (item.value >= 2.0) {
                 barColor = '#e74c3c'; // Rosso (Deficit Critico)
-            } else if (item.value <= -1.5) {
+            } else if (item.value >= 1.5) {
                 barColor = '#f39c12'; // Arancione (Borderline)
             }
 
@@ -193,9 +196,10 @@ reportRouter.get('/patients/:patientId/report-pdf', verifyJwt, async (req: Authe
 
         // Costruiamo il paragrafo dinamicamente dai soli Z-Score realmente disponibili: non
         // formuliamo un'ipotesi diagnostica, elenchiamo il dato misurato e la sua fascia di gravità.
+        // Stessa direzione "più alto = peggio" usata per il colore della barra sopra
         const severityLabel = (z: number): string => {
-            if (z <= -2.0) return 'deficit critico';
-            if (z <= -1.5) return 'prestazione borderline';
+            if (z >= 2.0) return 'deficit critico';
+            if (z >= 1.5) return 'prestazione borderline';
             return 'prestazione nella norma';
         };
 

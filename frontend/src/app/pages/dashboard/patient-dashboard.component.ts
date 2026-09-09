@@ -216,15 +216,18 @@ export class PatientDashboardComponent implements OnInit {
       });
   }
 
+  // zScorePrimary/zScoreTau derivano da metriche "più alto = peggio" (effetto interferenza,
+  // tasso falsi allarmi, tau): un paziente compromesso ha un valore SUPERIORE alla media di
+  // popolazione, quindi uno Z-Score positivo. La direzione preoccupante è Z >= soglia.
   getZScoreClass(zScore: number): string {
-    if (zScore <= -2.0) return 'critical-deficit'; // Colore di sfondo rosso intenso
-    if (zScore <= -1.5) return 'borderline-warning'; // Colore di sfondo giallo/arancione
+    if (zScore >= 2.0) return 'critical-deficit'; // Colore di sfondo rosso intenso
+    if (zScore >= 1.5) return 'borderline-warning'; // Colore di sfondo giallo/arancione
     return 'normal-performance'; // Colore di sfondo verde
   }
 
   getZScoreInterpretation(zScore: number): string {
-    if (zScore <= -2.0) return 'Deficit Critico';
-    if (zScore <= -1.5) return 'Prestazione Borderline';
+    if (zScore >= 2.0) return 'Deficit Critico';
+    if (zScore >= 1.5) return 'Prestazione Borderline';
     return 'Nella Norma';
   }
 }
