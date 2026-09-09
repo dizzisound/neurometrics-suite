@@ -7,7 +7,7 @@
 
 import { Schema, model, Document } from 'mongoose';
 
-export interface INormativeData extends Document {
+export interface NormativeDataDocument extends Document {
     testType: 'STROOP' | 'GO_NO_GO' | 'FLANKER';
     metricName: 'INTERFERENCE_EFFECT' | 'FALSE_ALARMS_RATE' | 'TAU';
     ageRange: {
@@ -24,7 +24,7 @@ export interface INormativeData extends Document {
     createdAt: Date;
 }
 
-const NormativeDataSchema = new Schema<INormativeData>({
+const NormativeDataSchema = new Schema<NormativeDataDocument>({
     testType: { type: String, enum: ['STROOP', 'GO_NO_GO', 'FLANKER'], required: true },
     metricName: { type: String, enum: ['INTERFERENCE_EFFECT', 'FALSE_ALARMS_RATE', 'TAU'], required: true },
     ageRange: {
@@ -43,4 +43,4 @@ const NormativeDataSchema = new Schema<INormativeData>({
 // Indice composto per velocizzare le query di calcolo clinico
 NormativeDataSchema.index({ testType: 1, metricName: 1, 'ageRange.min': 1, 'educationYearsRange.min': 1 });
 
-export const NormativeData = model<INormativeData>('NormativeData', NormativeDataSchema);
+export const NormativeData = model<NormativeDataDocument>('NormativeData', NormativeDataSchema);

@@ -6,7 +6,8 @@
 
 import { Response, Router } from 'express';
 import mongoose from 'mongoose';
-import { TestSession, Patient, IPatient } from '../../database/models/session.schema';
+import { TestSession } from '../../database/models/session.schema';
+import { Patient, PatientDocument } from '../../database/models/patient.schema';
 import { validateBody } from '../../middleware/validate.middleware';
 import { CreateSessionValidationSchema, CreateSessionInput } from './session.validator';
 import { CreatePatientValidationSchema, CreatePatientInput } from './patient.validator';
@@ -22,7 +23,7 @@ const router = Router();
 // Ritorna il documento Patient autorizzato (i chiamanti che devono solo verificare
 // l'accesso possono continuare a scrivere `if (!await authorizePatientAccess(...)) return;`)
 // Esportata perché riutilizzata anche fuori da questo modulo (es. generazione PDF)
-export async function authorizePatientAccess(req: AuthenticatedRequest, res: Response, patientId: string | string[] | undefined, options: { allowDeidentifiedResearch?: boolean } = {}): Promise<IPatient | null> {
+export async function authorizePatientAccess(req: AuthenticatedRequest, res: Response, patientId: string | string[] | undefined, options: { allowDeidentifiedResearch?: boolean } = {}): Promise<PatientDocument | null> {
   if (typeof patientId !== 'string' || !mongoose.isObjectIdOrHexString(patientId)) {
     res.status(400).json({ error: 'ID paziente non valido.' });
     return null;

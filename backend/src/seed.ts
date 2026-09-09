@@ -8,7 +8,8 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import { Config } from './config/env.config';
 import { User } from './database/models/user.schema';
-import { Patient, TestSession } from './database/models/session.schema';
+import { Patient } from './database/models/patient.schema';
+import { TestSession } from './database/models/session.schema';
 import { NormativeData } from './database/models/normative.schema';
 import { estimateExGaussianParams } from './modules/sessions/exgaussian';
 
