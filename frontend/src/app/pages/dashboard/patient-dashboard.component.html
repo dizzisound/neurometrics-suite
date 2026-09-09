@@ -1,0 +1,254 @@
+<div
+  class="dashboard-container"
+  style="padding: 20px; font-family: sans-serif; background: #f8f9fa; min-height: 100vh;"
+>
+  <!-- HEADER E SELETTORE PAZIENTE -->
+  <div
+    style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;"
+  >
+    <div>
+      <h2 style="margin: 0; color: #2c3e50;">Pannello di Monitoraggio Longitudinale</h2>
+
+      @if (patientContext.patients().length > 0) {
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+          <label for="patient-select" style="font-weight: bold; color: #34495e;">Paziente:</label>
+          <select
+            id="patient-select"
+            [ngModel]="patientContext.selectedPatientId()"
+            (ngModelChange)="patientContext.selectPatient($event)"
+            style="padding: 8px; font-size: 0.95rem; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; color: #2c3e50;"
+          >
+            @for (p of patientContext.patients(); track p._id) {
+              <option [value]="p._id">{{ p.patientCode }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (!patientContext.isLoading() && patientContext.patients().length === 0) {
+        <p style="margin: 10px 0 0 0; color: #e74c3c; font-weight: 600;">
+          Nessun paziente assegnato al tuo account.
+        </p>
+      }
+
+      <div style="margin-top: 12px;">
+        <button
+          (click)="showNewPatientForm.set(!showNewPatientForm())"
+          style="padding: 6px 14px; font-size: 0.85rem; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;"
+        >
+          {{ showNewPatientForm() ? 'Annulla' : '+ Nuovo Paziente' }}
+        </button>
+
+        @if (showNewPatientForm()) {
+          <div
+            style="margin-top: 12px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6; max-width: 320px;"
+          >
+            @if (newPatientError()) {
+              <div
+                style="background: #f8d7da; color: #721c24; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85rem;"
+              >
+                {{ newPatientError() }}
+              </div>
+            }
+            <div style="margin-bottom: 10px;">
+              <label
+                for="new-patient-code"
+                style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #444;"
+                >Codice Paziente</label
+              >
+              <input
+                id="new-patient-code"
+                type="text"
+                [ngModel]="newPatientCode()"
+                (ngModelChange)="newPatientCode.set($event)"
+                style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"
+              />
+            </div>
+            <div style="margin-bottom: 10px;">
+              <label
+                for="new-patient-birthdate"
+                style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #444;"
+                >Data di Nascita</label
+              >
+              <input
+                id="new-patient-birthdate"
+                type="date"
+                [ngModel]="newPatientBirthDate()"
+                (ngModelChange)="newPatientBirthDate.set($event)"
+                style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"
+              />
+            </div>
+            <div style="margin-bottom: 10px;">
+              <label
+                for="new-patient-education-years"
+                style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #444;"
+                >Anni di Scolarità</label
+              >
+              <input
+                id="new-patient-education-years"
+                type="number"
+                min="0"
+                [ngModel]="newPatientEducationYears()"
+                (ngModelChange)="newPatientEducationYears.set($event)"
+                style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;"
+              />
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label
+                for="new-patient-gender"
+                style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #444;"
+                >Genere</label
+              >
+              <select
+                id="new-patient-gender"
+                [ngModel]="newPatientGender()"
+                (ngModelChange)="newPatientGender.set($event)"
+                style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"
+              >
+                <option value="M">M</option>
+                <option value="F">F</option>
+                <option value="O">O</option>
+              </select>
+            </div>
+            <button
+              (click)="submitNewPatient()"
+              [disabled]="isCreatingPatient()"
+              style="width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;"
+            >
+              {{ isCreatingPatient() ? 'Creazione in corso...' : 'Crea Paziente' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Menu a tendina legato bidirezionalmente al Signal del Test Attivo -->
+    @if (patientContext.selectedPatientId()) {
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="paradigm-select" style="font-weight: bold; color: #34495e;">Seleziona Paradigma:</label>
+        <select
+          id="paradigm-select"
+          [ngModel]="selectedTest()"
+          (ngModelChange)="onParadigmChange($event)"
+          style="padding: 10px; font-size: 1rem; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; font-weight: 600; color: #2c3e50;"
+        >
+          <option value="STROOP">Test di Stroop (Inibizione Cognitiva)</option>
+          <option value="GO_NO_GO">Test Go/No-Go (Inibizione Motoria)</option>
+          <option value="FLANKER">Test di Flanker (Inibizione Attentiva)</option>
+        </select>
+      </div>
+    }
+  </div>
+
+  @if (patientContext.selectedPatientId()) {
+    <!-- AVVIO TEST -->
+    <div style="margin-bottom: 25px; display: flex; gap: 12px; flex-wrap: wrap;">
+      <button
+        (click)="startTest('STROOP')"
+        style="padding: 10px 20px; font-weight: bold; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);"
+      >
+        Avvia Test di Stroop
+      </button>
+      <button
+        (click)="startTest('GO_NO_GO')"
+        style="padding: 10px 20px; font-weight: bold; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);"
+      >
+        Avvia Test Go/No-Go
+      </button>
+      <button
+        (click)="startTest('FLANKER')"
+        style="padding: 10px 20px; font-weight: bold; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);"
+      >
+        Avvia Test di Flanker
+      </button>
+    </div>
+    <!-- BOTTONE ESPORTAZIONE -->
+    <div style="margin-bottom: 25px;">
+      <button
+        (click)="downloadData()"
+        style="padding: 10px 20px; font-weight: bold; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,123,255,0.2);"
+      >
+        Esporta Dati Raw per SPSS / R
+      </button>
+    </div>
+    <!-- BOTTONE DOWNLOAD REPORT PDF -->
+    <div style="margin-bottom: 25px;">
+      <button
+        (click)="downloadPdfReport()"
+        style="padding: 10px 20px; font-weight: bold; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,123,255,0.2);"
+      >
+        Download PDF Report Clinico
+      </button>
+    </div>
+    <!-- TITOLO DINAMICO GRAFICI -->
+    <h3 style="color: #34495e; margin-bottom: 15px;">
+      Visualizzazione Attiva: {{ activeTestLabel() }}
+    </h3>
+
+    <!-- Confronto con la Popolazione di Controllo (Z-Score dell'ultima sessione) -->
+    @if (latestSession(); as s) {
+      <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        @if (s.summaryStats.zScorePrimary !== null && s.summaryStats.zScorePrimary !== undefined) {
+          <div
+            [class]="getZScoreClass(s.summaryStats.zScorePrimary)"
+            style="padding: 8px 14px; border-radius: 4px; font-weight: bold; font-size: 0.9rem;"
+          >
+            {{ chart1SeriesLabel() }} — Z: {{ s.summaryStats.zScorePrimary }} ({{
+              getZScoreInterpretation(s.summaryStats.zScorePrimary)
+            }})
+          </div>
+        }
+        @if (s.summaryStats.zScoreTau !== null && s.summaryStats.zScoreTau !== undefined) {
+          <div
+            [class]="getZScoreClass(s.summaryStats.zScoreTau)"
+            style="padding: 8px 14px; border-radius: 4px; font-weight: bold; font-size: 0.9rem;"
+          >
+            Tau — Z: {{ s.summaryStats.zScoreTau }} ({{ getZScoreInterpretation(s.summaryStats.zScoreTau) }})
+          </div>
+        }
+        @if (
+          (s.summaryStats.zScorePrimary === null || s.summaryStats.zScorePrimary === undefined) &&
+          (s.summaryStats.zScoreTau === null || s.summaryStats.zScoreTau === undefined)
+        ) {
+          <div style="padding: 8px 14px; border-radius: 4px; font-size: 0.85rem; color: #6c757d; background: #f1f1f1;">
+            Confronto con la popolazione di controllo non disponibile per età/scolarità di questo paziente.
+          </div>
+        }
+      </div>
+    }
+
+    <!-- GRIGLIA GRAFICI -->
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+      <!-- Grafico 1: Indice Clinico Principale -->
+      <div
+        style="flex: 1; min-width: 450px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"
+      >
+        <h4 style="margin-top: 0; color: #2c3e50;">{{ chart1Title() }}</h4>
+        <app-trend-chart
+          [points]="chart1Points()"
+          [unit]="chart1Unit()"
+          [seriesLabel]="chart1SeriesLabel()"
+          [color]="chart1Color()"
+          [ariaLabel]="chart1Title()"
+          emptyMessage="Nessuna sessione registrata per questo paradigma."
+        />
+      </div>
+      <!-- Grafico 2: Parametro Attentivo Tau -->
+      <div
+        style="flex: 1; min-width: 450px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"
+      >
+        <h4 style="margin-top: 0; color: #2c3e50;">
+          Analisi Ex-Gaussiana: Parametro &tau; (Latenza Attentiva)
+        </h4>
+        <app-trend-chart
+          [points]="chart2Points()"
+          unit="ms"
+          seriesLabel="Valore Tau"
+          color="tau"
+          ariaLabel="Andamento del parametro Tau (latenza attentiva) nel tempo"
+          emptyMessage="Nessuna sessione registrata per questo paradigma."
+        />
+      </div>
+    </div>
+  }
+</div>

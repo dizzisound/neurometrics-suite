@@ -1,0 +1,88 @@
+<div
+  class="viewport"
+  style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #121212; color: white; font-family: sans-serif; user-select: none;"
+>
+  <!-- Schermata Iniziale con istruzioni per il paziente -->
+  @if (currentState() === 'START_SCREEN') {
+    <div style="text-align: center; max-width: 520px; padding: 0 20px;">
+      <h2>Test di Stroop</h2>
+      <p style="line-height: 1.6;">
+        Al centro dello schermo apparirà una parola scritta con un colore. Il tuo compito è
+        indicare <strong>il colore con cui è scritta la parola</strong>, ignorando il suo
+        significato.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 30px; margin: 24px 0;">
+        <div style="text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 700; letter-spacing: 2px; color: #2ecc71;">
+            ROSSO
+          </div>
+          <div style="font-size: 0.85rem; color: #bbb; margin-top: 8px;">
+            Qui il colore è verde &rarr; premi <strong>V</strong>
+          </div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 1.8rem; font-weight: 700; letter-spacing: 2px; color: #ff4d4d;">
+            VERDE
+          </div>
+          <div style="font-size: 0.85rem; color: #bbb; margin-top: 8px;">
+            Qui il colore è rosso &rarr; premi <strong>R</strong>
+          </div>
+        </div>
+      </div>
+      <p style="line-height: 1.6;">
+        Premi <strong>R</strong> quando il colore è rosso, <strong>V</strong> quando è verde.
+        Rispondi il più velocemente possibile, cercando di sbagliare il meno possibile. Il test
+        è composto da 20 prove.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 12px; margin-top: 15px;">
+        <button
+          (click)="startExperiment()"
+          style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;"
+        >
+          Inizia
+        </button>
+        <button
+          (click)="goToDashboard()"
+          style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;"
+        >
+          Torna alla Dashboard
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Croce di Fissazione Calibrata -->
+  @if (currentState() === 'FIXATION') {
+    <div class="fixation-cross">+</div>
+  }
+
+  <!-- Stimolo Target Calibrato con classi a contrasto controllato -->
+  @if (currentState() === 'STIMULUS') {
+    <div
+      class="stroop-stimulus"
+      [ngClass]="{
+        'color-target-red': activeTrial()?.color === 'red',
+        'color-target-green': activeTrial()?.color === 'green',
+      }"
+    >
+      {{ activeTrial()?.word }}
+    </div>
+  }
+
+  <!-- Feedback d'Errore Scientifico -->
+  @if (currentState() === 'FEEDBACK') {
+    <div class="feedback-error shake-animation">X</div>
+  }
+
+  <!-- Inter-Stimulus Interval -->
+  @if (currentState() === 'ISI') {
+    <div></div>
+  }
+
+  <!-- Schermata di Fine -->
+  @if (currentState() === 'COMPLETED') {
+    <div style="text-align: center;">
+      <h3>Elaborazione e salvataggio dei parametri esecutivi...</h3>
+    </div>
+  }
+</div>
