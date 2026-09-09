@@ -6,11 +6,12 @@
  */
 
 import { Component, OnInit, HostListener, inject, NgZone, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { NeuroStatsService } from '../../../core/services/neuro-stats.service';
 import { PatientContextService } from '../../../core/services/patient-context.service';
 
-type FlankerState = 'FIXATION' | 'STIMULUS' | 'ISI';
+type FlankerState = 'START_SCREEN' | 'FIXATION' | 'STIMULUS' | 'ISI' | 'COMPLETED';
 
 interface FlankerTrial {
   stringDisplay: string;
@@ -46,6 +47,53 @@ interface FlankerTrialResult {
       }
 
       @if (hasPatient) {
+        <!-- Schermata Iniziale con istruzioni per il paziente -->
+        @if (currentState() === 'START_SCREEN') {
+          <div style="color: white; text-align: center; font-family: sans-serif; max-width: 520px; padding: 0 20px;">
+            <h2>Test di Flanker</h2>
+            <p style="line-height: 1.6;">
+              Al centro dello schermo apparirà una fila di frecce. Il tuo compito è indicare la
+              direzione della <strong>freccia centrale</strong>, ignorando le frecce ai lati.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 30px; margin: 24px 0;">
+              <div style="text-align: center;">
+                <div style="font-family: 'Courier New', Courier, monospace; letter-spacing: 10px; font-size: 1.6rem; color: #ecf0f1;">
+                  &gt;&gt;&gt;&gt;&gt;
+                </div>
+                <div style="font-size: 0.85rem; color: #bbb; margin-top: 8px;">
+                  Freccia centrale a destra &rarr; premi <strong>&rarr;</strong>
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-family: 'Courier New', Courier, monospace; letter-spacing: 10px; font-size: 1.6rem; color: #ecf0f1;">
+                  &lt;&lt;&gt;&lt;&lt;
+                </div>
+                <div style="font-size: 0.85rem; color: #bbb; margin-top: 8px;">
+                  Freccia centrale a destra &rarr; premi comunque <strong>&rarr;</strong>
+                </div>
+              </div>
+            </div>
+            <p style="line-height: 1.6;">
+              Premi la freccia <strong>SINISTRA</strong> della tastiera se la freccia centrale
+              punta a sinistra, la freccia <strong>DESTRA</strong> se punta a destra. Rispondi il
+              più velocemente possibile restando accurato/a. Il test è composto da 20 prove.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 15px;">
+              <button
+                (click)="startExperiment()"
+                style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;"
+              >
+                Inizia
+              </button>
+              <button
+                (click)="goToDashboard()"
+                style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;"
+              >
+                Torna alla Dashboard
+              </button>
+            </div>
+          </div>
+        }
         @if (currentState() === 'FIXATION') {
           <div class="fixation-cross">+</div>
         }
@@ -61,6 +109,11 @@ interface FlankerTrialResult {
         @if (currentState() === 'ISI') {
           <div></div>
         }
+        @if (currentState() === 'COMPLETED') {
+          <div style="color: white; text-align: center; font-family: sans-serif;">
+            <h3>Elaborazione e salvataggio dei parametri esecutivi...</h3>
+          </div>
+        }
       }
     </div>
   `,
@@ -69,8 +122,9 @@ export class FlankerGameComponent implements OnInit {
   private zone = inject(NgZone);
   private statsService = inject(NeuroStatsService);
   private patientContext = inject(PatientContextService);
+  private router = inject(Router);
 
-  currentState = signal<FlankerState>('ISI');
+  currentState = signal<FlankerState>('START_SCREEN');
   activeTrial = signal<FlankerTrial | null>(null);
 
   private totalTrials = 20;
@@ -91,15 +145,25 @@ export class FlankerGameComponent implements OnInit {
     return !!this.patientContext.selectedPatientId();
   }
 
-  ngOnInit() {
-    if (this.hasPatient) {
-      this.generateBalancedSequence();
-      this.executeLifecycle();
-    }
+  ngOnInit(): void {
+    // Ricorda il paradigma corrente, così la dashboard mostra la vista giusta al ritorno
+    this.patientContext.lastTestType.set('FLANKER');
+  }
+
+  startExperiment(): void {
+    this.currentPointer = 0;
+    this.trialResults = [];
+    this.generateBalancedSequence();
+    this.executeLifecycle();
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   private generateBalancedSequence() {
     // Generiamo una lista equilibrata al 50% tra congruenti e incongruenti usando la logica del modulo Fisher-Yates sviluppato in precedenza
+    this.balancedSequence = [];
     for (let i = 0; i < this.totalTrials / 4; i++) {
       this.balancedSequence.push(...this.stimuliPool.map((s) => ({ ...s })));
     }
@@ -161,7 +225,7 @@ export class FlankerGameComponent implements OnInit {
   }
 
   private finalize() {
-    this.currentState.set('ISI');
+    this.currentState.set('COMPLETED');
     const payload = {
       patientId: this.patientContext.selectedPatientId()!,
       testType: 'FLANKER' as const,
@@ -169,7 +233,10 @@ export class FlankerGameComponent implements OnInit {
     };
 
     this.statsService.submitSession(payload).subscribe({
-      next: () => alert('Test Flanker completato con successo!'),
+      next: () => {
+        this.currentState.set('START_SCREEN');
+        alert('Test Flanker completato con successo!');
+      },
       error: (customError) => {
         if (customError.status === 0 || customError.status === 500) {
           this.statsService.saveSessionToLocalBackup(payload);
@@ -181,6 +248,7 @@ export class FlankerGameComponent implements OnInit {
             `Salvataggio della sessione fallito: ${customError.message || 'errore sconosciuto'}. I dati NON sono stati salvati.`,
           );
         }
+        this.currentState.set('START_SCREEN');
       },
     });
   }

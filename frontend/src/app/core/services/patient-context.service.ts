@@ -23,6 +23,8 @@ export interface NewPatientInput {
     gender: 'M' | 'F' | 'O';
 }
 
+export type TestParadigm = 'STROOP' | 'GO_NO_GO' | 'FLANKER';
+
 @Injectable({
     providedIn: 'root'
 })
@@ -33,6 +35,13 @@ export class PatientContextService {
     patients = signal<PatientSummary[]>([]);
     selectedPatientId = signal<string | null>(null);
     isLoading = signal<boolean>(false);
+
+    /**
+     * Ultimo paradigma su cui il clinico ha lavorato (dashboard o pagina di test).
+     * Usato per riportare automaticamente la dashboard sulla visualizzazione corretta
+     * quando si torna da un test, senza che il clinico debba riselezionarla a mano.
+     */
+    lastTestType = signal<TestParadigm>('STROOP');
 
     /**
      * Carica i pazienti del clinico autenticato. Se nessun paziente è ancora

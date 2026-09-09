@@ -9,6 +9,7 @@ import { Config } from './config/env.config';
 import { connectDB } from './database/connect';
 import authRouter from './modules/auth/auth.controller';
 import sessionRouter from './modules/sessions/sessions.controller';
+import reportRouter from './utils/pdf-generator';
 
 const app = express();
 
@@ -22,6 +23,7 @@ connectDB().catch((err) => console.error('Errore di connessione a DB:', err));
 // Registrazione Rotte
 app.use('/api', authRouter);
 app.use('/api', sessionRouter);
+app.use('/api', reportRouter);
 
 // Rotta di test
 app.get('/api/test', (req, res) => {

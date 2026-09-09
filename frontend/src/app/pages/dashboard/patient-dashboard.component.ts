@@ -6,29 +6,24 @@
  *
  */
 
-import {
-  Component,
-  OnInit,
-  ElementRef,
-  ViewChild,
-  inject,
-  signal,
-  computed,
-  effect,
-} from '@angular/core';
+import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NeuroStatsService, SessionSummary } from '../../core/services/neuro-stats.service';
-import { PatientContextService } from '../../core/services/patient-context.service';
-import Chart from 'chart.js/auto';
+import { PatientContextService, TestParadigm } from '../../core/services/patient-context.service';
+import {
+  TrendChartComponent,
+  TrendChartPoint,
+  TrendSeriesColor,
+} from '../../components/trend-chart/trend-chart.component';
 
-type SelectedTest = 'STROOP' | 'GO_NO_GO' | 'FLANKER';
+type SelectedTest = TestParadigm;
 
 @Component({
   selector: 'app-patient-dashboard',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TrendChartComponent],
   template: `
     <div
       class="dashboard-container"
@@ -161,7 +156,7 @@ type SelectedTest = 'STROOP' | 'GO_NO_GO' | 'FLANKER';
             <select
               id="paradigm-select"
               [ngModel]="selectedTest()"
-              (ngModelChange)="selectedTest.set($event)"
+              (ngModelChange)="onParadigmChange($event)"
               style="padding: 10px; font-size: 1rem; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; font-weight: 600; color: #2c3e50;"
             >
               <option value="STROOP">Test di Stroop (Inibizione Cognitiva)</option>
@@ -216,6 +211,39 @@ type SelectedTest = 'STROOP' | 'GO_NO_GO' | 'FLANKER';
         <h3 style="color: #34495e; margin-bottom: 15px;">
           Visualizzazione Attiva: {{ activeTestLabel() }}
         </h3>
+
+        <!-- Confronto con la Popolazione di Controllo (Z-Score dell'ultima sessione) -->
+        @if (latestSession(); as s) {
+          <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+            @if (s.summaryStats.zScorePrimary !== null && s.summaryStats.zScorePrimary !== undefined) {
+              <div
+                [class]="getZScoreClass(s.summaryStats.zScorePrimary)"
+                style="padding: 8px 14px; border-radius: 4px; font-weight: bold; font-size: 0.9rem;"
+              >
+                {{ chart1SeriesLabel() }} — Z: {{ s.summaryStats.zScorePrimary }} ({{
+                  getZScoreInterpretation(s.summaryStats.zScorePrimary)
+                }})
+              </div>
+            }
+            @if (s.summaryStats.zScoreTau !== null && s.summaryStats.zScoreTau !== undefined) {
+              <div
+                [class]="getZScoreClass(s.summaryStats.zScoreTau)"
+                style="padding: 8px 14px; border-radius: 4px; font-weight: bold; font-size: 0.9rem;"
+              >
+                Tau — Z: {{ s.summaryStats.zScoreTau }} ({{ getZScoreInterpretation(s.summaryStats.zScoreTau) }})
+              </div>
+            }
+            @if (
+              (s.summaryStats.zScorePrimary === null || s.summaryStats.zScorePrimary === undefined) &&
+              (s.summaryStats.zScoreTau === null || s.summaryStats.zScoreTau === undefined)
+            ) {
+              <div style="padding: 8px 14px; border-radius: 4px; font-size: 0.85rem; color: #6c757d; background: #f1f1f1;">
+                Confronto con la popolazione di controllo non disponibile per età/scolarità di questo paziente.
+              </div>
+            }
+          </div>
+        }
+
         <!-- GRIGLIA GRAFICI -->
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
           <!-- Grafico 1: Indice Clinico Principale -->
@@ -223,7 +251,14 @@ type SelectedTest = 'STROOP' | 'GO_NO_GO' | 'FLANKER';
             style="flex: 1; min-width: 450px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"
           >
             <h4 style="margin-top: 0; color: #2c3e50;">{{ chart1Title() }}</h4>
-            <canvas #chartCanvas1></canvas>
+            <app-trend-chart
+              [points]="chart1Points()"
+              [unit]="chart1Unit()"
+              [seriesLabel]="chart1SeriesLabel()"
+              [color]="chart1Color()"
+              [ariaLabel]="chart1Title()"
+              emptyMessage="Nessuna sessione registrata per questo paradigma."
+            />
           </div>
           <!-- Grafico 2: Parametro Attentivo Tau -->
           <div
@@ -232,12 +267,38 @@ type SelectedTest = 'STROOP' | 'GO_NO_GO' | 'FLANKER';
             <h4 style="margin-top: 0; color: #2c3e50;">
               Analisi Ex-Gaussiana: Parametro &tau; (Latenza Attentiva)
             </h4>
-            <canvas #chartCanvas2></canvas>
+            <app-trend-chart
+              [points]="chart2Points()"
+              unit="ms"
+              seriesLabel="Valore Tau"
+              color="tau"
+              ariaLabel="Andamento del parametro Tau (latenza attentiva) nel tempo"
+              emptyMessage="Nessuna sessione registrata per questo paradigma."
+            />
           </div>
         </div>
       }
     </div>
   `,
+  styles: [
+    `
+    .critical-deficit {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .borderline-warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+    .normal-performance {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    `,
+  ],
 })
 export class PatientDashboardComponent implements OnInit {
   private statsService = inject(NeuroStatsService);
@@ -245,7 +306,9 @@ export class PatientDashboardComponent implements OnInit {
   protected patientContext = inject(PatientContextService);
 
   // 1. SIGNALS DI STATO
-  selectedTest = signal<SelectedTest>('STROOP'); // Test di default caricato all'avvio
+  // Inizializziamo dal paradigma su cui il clinico ha lavorato per ultimo (dashboard o
+  // pagina di test), così tornando da un test la visualizzazione è già quella corretta.
+  selectedTest = signal<SelectedTest>(this.patientContext.lastTestType());
   private rawSessionsData = signal<SessionSummary[]>([]); // Cache locale dei dati del DB
 
   // Stato del modulo "Nuovo Paziente"
@@ -282,27 +345,63 @@ export class PatientDashboardComponent implements OnInit {
       case 'GO_NO_GO':
         return 'Tasso di Falsi Allarmi (%) - [Impulsività Comportamentale]';
       case 'FLANKER':
-        return 'Tasso di Errori di Inibizione (%) - [Inibizione Attentiva]';
+        return "Costo d'Interferenza (ms) - [Incongruenti - Congruenti]";
       default:
         return 'Metriche del test';
     }
   });
 
-  // Riferimenti ai Canvas nel DOM (non più statici: compaiono solo quando un paziente è selezionato)
-  @ViewChild('chartCanvas1') canvas1?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('chartCanvas2') canvas2?: ElementRef<HTMLCanvasElement>;
+  chart1Unit = computed(() => (this.selectedTest() === 'GO_NO_GO' ? '%' : 'ms'));
 
-  // Istanze globali dei grafici Chart.js per poterne fare il destroy/update dinamico
-  private chart1Instance: Chart | null = null;
-  private chart2Instance: Chart | null = null;
+  chart1SeriesLabel = computed(() => {
+    switch (this.selectedTest()) {
+      case 'STROOP':
+        return 'Effetto Interferenza';
+      case 'GO_NO_GO':
+        return 'Tasso Falsi Allarmi';
+      case 'FLANKER':
+        return "Costo d'Interferenza";
+      default:
+        return 'Valore';
+    }
+  });
+
+  // Ogni paradigma occupa uno slot fisso e mai ciclico della palette categoriale validata
+  chart1Color = computed<TrendSeriesColor>(() => {
+    switch (this.selectedTest()) {
+      case 'GO_NO_GO':
+        return 'gonogo';
+      case 'FLANKER':
+        return 'flanker';
+      default:
+        return 'stroop';
+    }
+  });
+
+  chart1Points = computed<TrendChartPoint[]>(() =>
+    this.filteredSessions().map((s) => ({
+      date: s.sessionDate,
+      value:
+        this.selectedTest() === 'GO_NO_GO'
+          ? (s.summaryStats.falseAlarmRate ?? 0)
+          : (s.summaryStats.interferenceEffect ?? 0),
+    })),
+  );
+
+  chart2Points = computed<TrendChartPoint[]>(() =>
+    this.filteredSessions().map((s) => ({
+      date: s.sessionDate,
+      value: s.summaryStats.exGaussian?.tau ?? 0,
+    })),
+  );
+
+  // Ultima sessione del paradigma selezionato: fonte per il confronto con la popolazione di controllo
+  latestSession = computed<SessionSummary | null>(() => {
+    const sessions = this.filteredSessions();
+    return sessions.length > 0 ? sessions[sessions.length - 1] : null;
+  });
 
   constructor() {
-    // 3. ANGULAR EFFECT: Si attiva automaticamente ogni volta che cambia il valore del Computed Signal 'filteredSessions'
-    effect(() => {
-      const sessions = this.filteredSessions();
-      this.updateCharts(sessions);
-    });
-
     // Ricarica lo storico ogni volta che cambia il paziente selezionato (incluso il primo auto-selezionato)
     effect(() => {
       const patientId = this.patientContext.selectedPatientId();
@@ -330,84 +429,6 @@ export class PatientDashboardComponent implements OnInit {
     });
   }
 
-  /**
-   * Aggiorna o distrugge/ricrea i grafici Chart.js con i nuovi dati filtrati
-   */
-  private updateCharts(sessions: SessionSummary[]): void {
-    if (!this.canvas1 || !this.canvas2) return; // I canvas esistono solo con un paziente selezionato
-
-    const labels = sessions.map((s) => new Date(s.sessionDate).toLocaleDateString('it-IT'));
-    const tauData = sessions.map((s) => s.summaryStats.exGaussian?.tau || 0);
-
-    // Configurazione dinamica dei dati per il Grafico 1 a seconda del paradigma selezionato
-    const dataset1Data = sessions.map((s) =>
-      this.selectedTest() === 'GO_NO_GO'
-        ? (s.summaryStats.falseAlarmRate ?? 0)
-        : (s.summaryStats.interferenceEffect ?? 0),
-    );
-
-    const dataset1Label =
-      this.selectedTest() === 'STROOP'
-        ? 'Effetto Interferenza (ms)'
-        : this.selectedTest() === 'GO_NO_GO'
-          ? 'Tasso Falsi Allarmi (%)'
-          : 'Tasso Errori di Inibizione (%)';
-
-    const dataset1Color =
-      this.selectedTest() === 'STROOP'
-        ? '#ff6384'
-        : this.selectedTest() === 'GO_NO_GO'
-          ? '#e67e22'
-          : '#8e44ad';
-
-    const yAxisLabel = this.selectedTest() === 'STROOP' ? 'Millisecondi (ms)' : 'Percentuale (%)';
-
-    // Se i grafici esistono già, li distruggiamo prima di ricostruirli (evita artefatti grafici al passaggio del mouse)
-    if (this.chart1Instance) this.chart1Instance.destroy();
-    if (this.chart2Instance) this.chart2Instance.destroy();
-
-    // Rendering Grafico 1 (Variabile a seconda del test)
-    this.chart1Instance = new Chart(this.canvas1.nativeElement, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: dataset1Label,
-            data: dataset1Data,
-            borderColor: dataset1Color,
-            backgroundColor: dataset1Color + '15',
-            fill: true,
-            tension: 0.1,
-          },
-        ],
-      },
-      options: { responsive: true, scales: { y: { title: { display: true, text: yAxisLabel } } } },
-    });
-
-    // Rendering Grafico 2 (Parametro Tau Ex-Gaussiano, presente in entrambi per misurare i vuoti attentivi)
-    this.chart2Instance = new Chart(this.canvas2.nativeElement, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Valore Tau (ms)',
-            data: tauData,
-            borderColor: '#36a2eb',
-            backgroundColor: '#36a2eb15',
-            fill: true,
-            tension: 0.1,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        scales: { y: { title: { display: true, text: 'Millisecondi (ms)' } } },
-      },
-    });
-  }
-
   downloadData(): void {
     const patientId = this.patientContext.selectedPatientId();
     if (patientId) this.statsService.downloadCsvExport(patientId);
@@ -416,6 +437,11 @@ export class PatientDashboardComponent implements OnInit {
   downloadPdfReport(): void {
     const patientId = this.patientContext.selectedPatientId();
     if (patientId) this.statsService.downloadPdfReport(patientId);
+  }
+
+  onParadigmChange(testType: SelectedTest): void {
+    this.selectedTest.set(testType);
+    this.patientContext.lastTestType.set(testType);
   }
 
   startTest(testType: SelectedTest): void {
@@ -461,5 +487,17 @@ export class PatientDashboardComponent implements OnInit {
           this.newPatientError.set(err.message || 'Impossibile creare il paziente.');
         },
       });
+  }
+
+  getZScoreClass(zScore: number): string {
+    if (zScore <= -2.0) return 'critical-deficit'; // Colore di sfondo rosso intenso
+    if (zScore <= -1.5) return 'borderline-warning'; // Colore di sfondo giallo/arancione
+    return 'normal-performance'; // Colore di sfondo verde
+  }
+
+  getZScoreInterpretation(zScore: number): string {
+    if (zScore <= -2.0) return 'Deficit Critico';
+    if (zScore <= -1.5) return 'Prestazione Borderline';
+    return 'Nella Norma';
   }
 }

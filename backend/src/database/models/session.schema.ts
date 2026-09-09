@@ -76,6 +76,10 @@ export interface ITestSession extends Document {
             sigma: number;
             tau: number;
         }
+        // Confronto con la popolazione di controllo (NormativeData): null se non c'è una fascia
+        // normativa corrispondente (età/scolarità fuori standardizzazione) o campione insufficiente
+        zScorePrimary?: number | null;  // Metrica principale del paradigma (interferenza o falsi allarmi)
+        zScoreTau?: number | null;      // Parametro Tau ex-Gaussiano
     }
 }
 
@@ -100,7 +104,9 @@ const TestSessionSchema = new Schema<ITestSession>({
             mu: Number,
             sigma: Number,
             tau: Number
-        }
+        },
+        zScorePrimary: { type: Number, default: null },
+        zScoreTau: { type: Number, default: null }
     }
 });
 

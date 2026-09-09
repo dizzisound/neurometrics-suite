@@ -6,11 +6,12 @@
  */
 
 import { Component, OnInit, HostListener, inject, NgZone, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { NeuroStatsService } from '../../../core/services/neuro-stats.service';
 import { PatientContextService } from '../../../core/services/patient-context.service';
 
-type GoNoGoState = 'FIXATION' | 'STIMULUS' | 'ISI';
+type GoNoGoState = 'START_SCREEN' | 'FIXATION' | 'STIMULUS' | 'ISI' | 'COMPLETED';
 type StimulusType = 'GO' | 'NO_GO';
 
 interface GoNoGoTrialResult {
@@ -38,6 +39,49 @@ interface GoNoGoTrialResult {
       }
 
       @if (hasPatient) {
+        <!-- Schermata Iniziale con istruzioni per il paziente -->
+        @if (currentState() === 'START_SCREEN') {
+          <div style="color: white; text-align: center; font-family: sans-serif; max-width: 520px; padding: 0 20px;">
+            <h2>Test Go/No-Go</h2>
+            <p style="line-height: 1.6;">
+              Al centro dello schermo apparirà una forma colorata. Il tuo compito dipende dalla
+              forma che vedi:
+            </p>
+            <div style="display: flex; justify-content: center; gap: 40px; margin: 24px 0;">
+              <div style="text-align: center;">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background-color: #2ecc71; margin: 0 auto;"></div>
+                <div style="font-size: 0.85rem; color: #bbb; margin-top: 10px;">
+                  Cerchio verde &rarr; premi <strong>SPAZIO</strong>
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 60px; height: 60px; background-color: #e74c3c; margin: 0 auto;"></div>
+                <div style="font-size: 0.85rem; color: #bbb; margin-top: 10px;">
+                  Quadrato rosso &rarr; <strong>non premere nulla</strong>
+                </div>
+              </div>
+            </div>
+            <p style="line-height: 1.6;">
+              Premi la <strong>barra spaziatrice</strong> il più velocemente possibile quando vedi
+              il cerchio verde. Se vedi il quadrato rosso, trattieniti e non premere nulla: hai
+              poco meno di un secondo per decidere. Il test è composto da 30 prove.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 15px;">
+              <button
+                (click)="startExperiment()"
+                style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;"
+              >
+                Inizia
+              </button>
+              <button
+                (click)="goToDashboard()"
+                style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;"
+              >
+                Torna alla Dashboard
+              </button>
+            </div>
+          </div>
+        }
         @if (currentState() === 'FIXATION') {
           <div style="font-size: 6rem; color: #7f8c8d;">+</div>
         }
@@ -52,6 +96,11 @@ interface GoNoGoTrialResult {
         @if (currentState() === 'ISI') {
           <div></div>
         }
+        @if (currentState() === 'COMPLETED') {
+          <div style="color: white; text-align: center; font-family: sans-serif;">
+            <h3>Elaborazione e salvataggio dei parametri esecutivi...</h3>
+          </div>
+        }
       }
     </div>
   `,
@@ -60,8 +109,9 @@ export class GoNoGoGameComponent implements OnInit {
   private zone = inject(NgZone);
   private statsService = inject(NeuroStatsService);
   private patientContext = inject(PatientContextService);
+  private router = inject(Router);
 
-  currentState = signal<GoNoGoState>('ISI');
+  currentState = signal<GoNoGoState>('START_SCREEN');
   currentStimulusType = signal<StimulusType>('GO');
 
   private totalTrials = 30;
@@ -76,10 +126,19 @@ export class GoNoGoGameComponent implements OnInit {
     return !!this.patientContext.selectedPatientId();
   }
 
-  ngOnInit() {
-    if (this.hasPatient) {
-      this.executeTrial();
-    }
+  ngOnInit(): void {
+    // Ricorda il paradigma corrente, così la dashboard mostra la vista giusta al ritorno
+    this.patientContext.lastTestType.set('GO_NO_GO');
+  }
+
+  startExperiment(): void {
+    this.currentPointer = 0;
+    this.trialResults = [];
+    this.executeTrial();
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   private executeTrial() {
@@ -169,6 +228,7 @@ export class GoNoGoGameComponent implements OnInit {
   }
 
   private submitData() {
+    this.currentState.set('COMPLETED');
     // Invio del payload strutturato all'endpoint generico
     const payload = {
       patientId: this.patientContext.selectedPatientId()!,
@@ -176,7 +236,10 @@ export class GoNoGoGameComponent implements OnInit {
       trials: this.trialResults,
     };
     this.statsService.submitSession(payload).subscribe({
-      next: () => alert('Test Go/No-Go Salvato!'),
+      next: () => {
+        this.currentState.set('START_SCREEN');
+        alert('Test Go/No-Go Salvato!');
+      },
       error: (customError) => {
         if (customError.status === 0 || customError.status === 500) {
           this.statsService.saveSessionToLocalBackup(payload);
@@ -188,6 +251,7 @@ export class GoNoGoGameComponent implements OnInit {
             `Salvataggio della sessione fallito: ${customError.message || 'errore sconosciuto'}. I dati NON sono stati salvati.`,
           );
         }
+        this.currentState.set('START_SCREEN');
       },
     });
   }

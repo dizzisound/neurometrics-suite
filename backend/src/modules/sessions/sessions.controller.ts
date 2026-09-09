@@ -6,7 +6,7 @@
 
 import { Response, Router } from 'express';
 import mongoose from 'mongoose';
-import { TestSession, Patient } from '../../database/models/session.schema';
+import { TestSession, Patient, IPatient } from '../../database/models/session.schema';
 import { validateBody } from '../../middleware/validate.middleware';
 import { CreateSessionValidationSchema, CreateSessionInput } from './session.validator';
 import { CreatePatientValidationSchema, CreatePatientInput } from './patient.validator';
@@ -14,42 +14,46 @@ import * as ss from 'simple-statistics';
 import { estimateExGaussianParams } from './exgaussian'; // Funzione scritta da zero
 import { NeuroDataCleaner } from './data-cleaner'; // Utilità per la pulizia dei dati neuropsicologici
 import { AuthenticatedRequest, verifyJwt } from '../auth/auth.controller';
+import { computeClinicalZScore } from '../../utils/zscore.helper';
 // Se usi la libreria esterna: npm install @json2csv/plainjs
 
 const router = Router();
 
-async function authorizePatientAccess(req: AuthenticatedRequest, res: Response, patientId: string | string[] | undefined, options: { allowDeidentifiedResearch?: boolean } = {}) {
+// Ritorna il documento Patient autorizzato (i chiamanti che devono solo verificare
+// l'accesso possono continuare a scrivere `if (!await authorizePatientAccess(...)) return;`)
+// Esportata perché riutilizzata anche fuori da questo modulo (es. generazione PDF)
+export async function authorizePatientAccess(req: AuthenticatedRequest, res: Response, patientId: string | string[] | undefined, options: { allowDeidentifiedResearch?: boolean } = {}): Promise<IPatient | null> {
   if (typeof patientId !== 'string' || !mongoose.isObjectIdOrHexString(patientId)) {
     res.status(400).json({ error: 'ID paziente non valido.' });
-    return false;
+    return null;
   }
 
   const userContext = req.userContext;
   if (!userContext) {
     res.status(401).json({ error: 'Accesso negato. Token mancante.' });
-    return false;
+    return null;
   }
 
   const patient = await Patient.findById(patientId);
   if (!patient) {
     res.status(404).json({ error: 'Paziente non trovato nei registri clinici.' });
-    return false;
+    return null;
   }
 
   if (userContext.role === 'RESEARCHER') {
     if (!options.allowDeidentifiedResearch) {
       res.status(403).json({ error: 'Ruolo non autorizzato a inserire o modificare dati clinici.' });
-      return false;
+      return null;
     }
-    return true; // Accesso di sola lettura a dati de-identificati, non vincolato al clinico proprietario
+    return patient; // Accesso di sola lettura a dati de-identificati, non vincolato al clinico proprietario
   }
 
   if (userContext.role !== 'ADMIN' && (!patient.clinicianId || patient.clinicianId.toString() !== userContext.id)) {
     res.status(403).json({ error: 'Non sei autorizzato ad accedere ai dati di questo paziente.' });
-    return false;
+    return null;
   }
 
-  return true;
+  return patient;
 }
 
 /**
@@ -139,7 +143,8 @@ router.post('/sessions', verifyJwt, validateBody(CreateSessionValidationSchema),
     // Grazie a Zod, req.body è fortemente tipizzato come CreateSessionInput
     const { patientId, testType, trials }: CreateSessionInput = req.body;
 
-    if (!await authorizePatientAccess(req, res, patientId)) return;
+    const patient = await authorizePatientAccess(req, res, patientId);
+    if (!patient) return;
 
     // Da qui in poi la pipeline esegue i calcoli (MAD, Ex-Gaussiana, Effetto Interferenza)
     // con la garanzia che trials sia un array sano, non vuoto e contenente solo numeri validi.
@@ -266,6 +271,20 @@ router.post('/sessions', verifyJwt, validateBody(CreateSessionValidationSchema),
         exGaussian: allCorrectRtClean.length >= 5 ? estimateExGaussianParams(allCorrectRtClean) : { mu: 0, sigma: 0, tau: 0 }
       };
     }
+
+    // 6.5 Confronto con la popolazione di controllo (Z-Score clinico)
+    // La metrica primaria dipende dal paradigma; il Tau è comune a tutti e tre.
+    const primaryMetricName = testType === 'GO_NO_GO' ? 'FALSE_ALARMS_RATE' : 'INTERFERENCE_EFFECT';
+    const primaryValue = testType === 'GO_NO_GO' ? summaryStats.falseAlarmRate : summaryStats.interferenceEffect;
+
+    summaryStats.zScorePrimary = typeof primaryValue === 'number'
+      ? await computeClinicalZScore(patient.birthDate, patient.educationYears, testType, primaryMetricName, primaryValue)
+      : null;
+
+    // Un Tau a zero è la sentinella "campione insufficiente" usata sopra, non un valore reale da confrontare
+    summaryStats.zScoreTau = summaryStats.exGaussian?.tau > 0
+      ? await computeClinicalZScore(patient.birthDate, patient.educationYears, testType, 'TAU', summaryStats.exGaussian.tau)
+      : null;
 
     // 7. Assemblaggio del documento finale e persistenza su DB
     const newSession = new TestSession({

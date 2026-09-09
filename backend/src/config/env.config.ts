@@ -7,7 +7,8 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 
 // Carica i dati dal file .env nella memoria di processo
-dotenv.config();
+// quiet: true evita che dotenv stampi un suo tip/annuncio casuale ad ogni avvio
+dotenv.config({ quiet: true });
 
 // Definiamo uno schema Zod per assicurarci che il backend non parta nemmeno 
 // se manca una variabile fondamentale (Fail-Fast Pattern)

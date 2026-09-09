@@ -7,7 +7,7 @@
   "type": "module",
   "main": "main.ts",
   "scripts": {
-    "start-all": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run start\"",
+    "start-all": "nvm use --lts && concurrently \"cd backend && npm run dev\" \"cd frontend && npm run start\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   }
 }

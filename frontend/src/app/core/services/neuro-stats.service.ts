@@ -62,6 +62,10 @@ export interface SessionSummary {
             sigma: number;
             tau: number;
         };
+        // Confronto con la popolazione di controllo (NormativeData); null se manca una fascia
+        // normativa corrispondente o il campione era insufficiente per stimare il Tau
+        zScorePrimary?: number | null;
+        zScoreTau?: number | null;
     };
 }
 

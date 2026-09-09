@@ -11,6 +11,7 @@ type TestState = 'START_SCREEN' | 'FIXATION' | 'STIMULUS' | 'FEEDBACK' | 'ISI' |
 
 import { Component, OnInit, HostListener, inject, NgZone, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { NeuroStatsService, TrialData } from '../../../core/services/neuro-stats.service';
 import { generateBalancedTrials, TrialConfig } from '../utils/trial-balancer';
 import { PatientContextService } from '../../../core/services/patient-context.service';
@@ -29,17 +30,52 @@ export function calculateReactionTimeMs(responseTime: number, stimulusTime: numb
       class="viewport"
       style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #121212; color: white; font-family: sans-serif; user-select: none;"
     >
-      <!-- Schermata Iniziale -->
+      <!-- Schermata Iniziale con istruzioni per il paziente -->
       @if (currentState() === 'START_SCREEN') {
-        <div style="text-align: center;">
-          <h2>Test di Stroop con Monitoraggio Errori</h2>
-          <p>Rispondi il più velocemente possibile evitando gli errori.</p>
-          <button
-            (click)="startExperiment()"
-            style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; margin-top: 15px;"
-          >
-            Inizia
-          </button>
+        <div style="text-align: center; max-width: 520px; padding: 0 20px;">
+          <h2>Test di Stroop</h2>
+          <p style="line-height: 1.6;">
+            Al centro dello schermo apparirà una parola scritta con un colore. Il tuo compito è
+            indicare <strong>il colore con cui è scritta la parola</strong>, ignorando il suo
+            significato.
+          </p>
+          <div style="display: flex; justify-content: center; gap: 30px; margin: 24px 0;">
+            <div style="text-align: center;">
+              <div style="font-size: 1.8rem; font-weight: 700; letter-spacing: 2px; color: #2ecc71;">
+                ROSSO
+              </div>
+              <div style="font-size: 0.85rem; color: #bbb; margin-top: 8px;">
+                Qui il colore è verde &rarr; premi <strong>V</strong>
+              </div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 1.8rem; font-weight: 700; letter-spacing: 2px; color: #ff4d4d;">
+                VERDE
+              </div>
+              <div style="font-size: 0.85rem; color: #bbb; margin-top: 8px;">
+                Qui il colore è rosso &rarr; premi <strong>R</strong>
+              </div>
+            </div>
+          </div>
+          <p style="line-height: 1.6;">
+            Premi <strong>R</strong> quando il colore è rosso, <strong>V</strong> quando è verde.
+            Rispondi il più velocemente possibile, cercando di sbagliare il meno possibile. Il test
+            è composto da 20 prove.
+          </p>
+          <div style="display: flex; justify-content: center; gap: 12px; margin-top: 15px;">
+            <button
+              (click)="startExperiment()"
+              style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;"
+            >
+              Inizia
+            </button>
+            <button
+              (click)="goToDashboard()"
+              style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;"
+            >
+              Torna alla Dashboard
+            </button>
+          </div>
         </div>
       }
 
@@ -84,6 +120,7 @@ export class StroopGameComponent implements OnInit {
   private zone = inject(NgZone);
   private statsService = inject(NeuroStatsService);
   private patientContext = inject(PatientContextService);
+  private router = inject(Router);
 
   currentState = signal<TestState>('START_SCREEN');
 
@@ -96,6 +133,8 @@ export class StroopGameComponent implements OnInit {
   private resultsAccumulator: TrialData[] = [];
 
   ngOnInit(): void {
+    // Ricorda il paradigma corrente, così la dashboard mostra la vista giusta al ritorno
+    this.patientContext.lastTestType.set('STROOP');
     this.trialSequence = generateBalancedTrials(this.totalTrialsCount);
   }
 
@@ -109,6 +148,10 @@ export class StroopGameComponent implements OnInit {
     this.currentPointer = 0;
     this.resultsAccumulator = [];
     this.executeTrialLifecycle();
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   /**
