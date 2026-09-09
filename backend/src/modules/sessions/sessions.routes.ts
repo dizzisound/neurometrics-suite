@@ -14,7 +14,7 @@ import { CreatePatientValidationSchema, CreatePatientInput } from './patient.val
 import * as ss from 'simple-statistics';
 import { estimateExGaussianParams } from './exgaussian'; // Funzione scritta da zero
 import { NeuroDataCleaner } from './data-cleaner'; // Utilità per la pulizia dei dati neuropsicologici
-import { AuthenticatedRequest, verifyJwt } from '../auth/auth.routes';
+import { AuthenticatedRequest, verifyJwt } from '../../middleware/auth.middleware';
 import { computeClinicalZScore } from '../../utils/zscore.helper';
 // Se usi la libreria esterna: npm install @json2csv/plainjs
 

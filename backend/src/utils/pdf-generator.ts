@@ -8,7 +8,7 @@ import { Response, Router } from 'express';
 // @ts-expect-error — the package is available at runtime, but has no declarations.
 import PDFDocument from 'pdfkit';
 import { TestSession } from '../database/models/session.schema';
-import { AuthenticatedRequest, verifyJwt } from '../modules/auth/auth.routes';
+import { AuthenticatedRequest, verifyJwt } from '../middleware/auth.middleware';
 import { authorizePatientAccess } from '../modules/sessions/sessions.routes';
 
 const reportRouter = Router();

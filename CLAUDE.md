@@ -49,7 +49,7 @@ Angular's own compiler (`ng build`) catches template-binding type errors that pl
 ## Architecture
 
 ### Auth & authorization
-JWT-based (30 min expiry), issued by `backend/src/modules/auth/auth.routes.ts` (`verifyJwt` — despite the name, `backend/src/middleware/auth.middleware.ts` is an empty leftover file; the real middleware lives in `auth.routes.ts`). Three roles, enforced in `sessions.routes.ts`'s `authorizePatientAccess`:
+JWT-based (30 min expiry). Tokens are issued by `auth.routes.ts` (`/auth/login`) and verified by `verifyJwt` in `backend/src/middleware/auth.middleware.ts`, imported by every route module that needs it. Three roles, enforced in `sessions.routes.ts`'s `authorizePatientAccess`:
 - `CLINICIAN` — only their own patients (`Patient.clinicianId` must match the JWT's user id)
 - `RESEARCHER` — read-only access to all patients, with de-identified patient codes in list/CSV responses
 - `ADMIN` — unrestricted
