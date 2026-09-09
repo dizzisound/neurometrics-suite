@@ -1,5 +1,5 @@
 /*
- * Controller per l'autenticazione degli utenti
+ * Router per l'autenticazione degli utenti
  * Gestisce la registrazione, il login e la protezione delle rotte tramite JWT
  *
  */

@@ -7,8 +7,8 @@ import express from 'express';
 import cors from 'cors';
 import { Config } from './config/env.config';
 import { connectDB } from './database/connect';
-import authRouter from './modules/auth/auth.controller';
-import sessionRouter from './modules/sessions/sessions.controller';
+import authRouter from './modules/auth/auth.routes';
+import sessionRouter from './modules/sessions/sessions.routes';
 import reportRouter from './utils/pdf-generator';
 
 const app = express();

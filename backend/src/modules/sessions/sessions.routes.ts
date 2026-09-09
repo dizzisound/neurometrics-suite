@@ -1,5 +1,5 @@
 /**
- * Controller per la gestione delle sessioni dei test neuropsicologici
+ * Router per la gestione delle sessioni dei test neuropsicologici
  * Include endpoint per la creazione e l'elaborazione delle sessioni
  * Applica protezione JWT, validazione Zod e logica di business avanzata
  */
@@ -13,7 +13,7 @@ import { CreatePatientValidationSchema, CreatePatientInput } from './patient.val
 import * as ss from 'simple-statistics';
 import { estimateExGaussianParams } from './exgaussian'; // Funzione scritta da zero
 import { NeuroDataCleaner } from './data-cleaner'; // Utilità per la pulizia dei dati neuropsicologici
-import { AuthenticatedRequest, verifyJwt } from '../auth/auth.controller';
+import { AuthenticatedRequest, verifyJwt } from '../auth/auth.routes';
 import { computeClinicalZScore } from '../../utils/zscore.helper';
 // Se usi la libreria esterna: npm install @json2csv/plainjs
 

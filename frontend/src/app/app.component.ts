@@ -11,7 +11,7 @@ import { RouterOutlet } from '@angular/router';
 import { routes } from './app.routes';
 import { DataService } from './core/services/data.service'; // <-- Importa il servizio
 // <-- Utile per le pipe o direttive nei template
-import { NavbarComponent } from './components/NavbarComponent'; // <-- Importa il componente NavbarComponent
+import { NavbarComponent } from './components/navbar.component'; // <-- Importa il componente NavbarComponent
 
 @Component({
   selector: 'app-root',
