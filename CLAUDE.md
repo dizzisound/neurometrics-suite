@@ -11,7 +11,7 @@ This is **two independently-versioned Node projects** in one folder, not a works
 
 The root `package.json` (`neurometrics-suite`) only exists to run both at once: `npm run start-all` (uses `concurrently`).
 
-**Git**: the whole tree (root, `backend/`, `frontend/`) is tracked in a single repo at the root, currently on branch `fix/01-report-pdf`. There is no separate nested repo under `frontend/` despite what directory-tree docs elsewhere may suggest.
+**Git**: the whole tree (root, `backend/`, `frontend/`) is tracked in a single repo at the root, currently on branch `feature/02-roles-implementation`. There is no separate nested repo under `frontend/` despite what directory-tree docs elsewhere may suggest.
 
 ## Common commands
 
