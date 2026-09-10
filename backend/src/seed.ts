@@ -78,8 +78,9 @@ async function runSeed() {
             normativePlaceholders.map((entry) => ({ ...entry, educationYearsRange: EDUCATION_BAND }))
         );
 
-        // 2. Creazione dell'Utente Clinico di Test
-        console.log('👤 Creazione dell\'utente clinico di test...');
+        // 2. Creazione dell'Utente Clinico di Test (più account di ruolo diverso, stessa password,
+        // per poter verificare manualmente i permessi di CLINICIAN/RESEARCHER/ADMIN in sviluppo)
+        console.log('👤 Creazione degli utenti di test (CLINICIAN, RESEARCHER, ADMIN)...');
         const passwordHash = await bcrypt.hash('password123', Config.BCRYPT_SALT_ROUNDS);
         const defaultClinician = new User({
             username: 'dott.rossi',
@@ -87,6 +88,11 @@ async function runSeed() {
             role: 'CLINICIAN'
         });
         await defaultClinician.save();
+
+        await User.insertMany([
+            { username: 'dott.bianchi', passwordHash, role: 'RESEARCHER' },
+            { username: 'admin.verdi', passwordHash, role: 'ADMIN' }
+        ]);
 
         // 3. Creazione del Paziente Anonimizzato
         console.log('📋 Creazione del profilo paziente fittizio...');
@@ -168,6 +174,10 @@ async function runSeed() {
         }
 
         console.log('✅ Database popolato correttamente con dati clinici conformi!');
+        console.log('   Credenziali di test (password per tutti: password123):');
+        console.log('   - dott.rossi    (CLINICIAN, proprietario del paziente PAZ_2026_MCI)');
+        console.log('   - dott.bianchi  (RESEARCHER, sola lettura su tutti i pazienti)');
+        console.log('   - admin.verdi   (ADMIN, accesso illimitato)');
         process.exit(0);
     } catch (error) {
         console.error('❌ Errore durante la procedura di seeding:', error);
