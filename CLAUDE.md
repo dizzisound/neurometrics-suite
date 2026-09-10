@@ -21,7 +21,7 @@ Run these from inside `backend/` or `frontend/` respectively — there is no roo
 ```
 npm run dev          # tsx watch src/app.ts — dev server on :3000, hot-reloads, does NOT type-check
 npm run build         # tsc — real type-check + emit to dist/
-npm run seed          # tsx src/seed.ts — wipes and repopulates the DB with one demo clinician/patient/sessions
+npm run seed          # tsx src/seed.ts — wipes and repopulates the DB with one demo patient/sessions and three test accounts (CLINICIAN, RESEARCHER, ADMIN), all password `password123`
 npm test              # vitest run --coverage
 npm run lint          # eslint . --ext .ts
 npm run clean          # rm -rf dist
@@ -46,6 +46,9 @@ npm run lint          # ng lint (@angular-eslint, includes template + accessibil
 ```
 Angular's own compiler (`ng build`) catches template-binding type errors that plain `tsc` won't — prefer `ng build` over bare `tsc --noEmit` when verifying frontend changes.
 
+### CI
+`.github/workflows/ci-quality-gate.yml` runs `backend`'s `npm test` and `frontend`'s `ng test --no-watch --no-progress` on push/PR to `main`/`dev`. It pins Node 24 — this project's current tooling (vitest 5's rolldown native binding, Angular CLI 22) hard-requires Node ≥22.12/≥24/≥26 and fails outright on Node 20, so don't lower that pin without checking `npm ci`'s `EBADENGINE` warnings first.
+
 ## Architecture
 
 ### Auth & authorization
@@ -56,8 +59,10 @@ JWT-based (30 min expiry). Tokens are issued by `auth.routes.ts` (`/auth/login`)
 
 `role` is never accepted from the client on register or on patient creation — it's always assigned server-side.
 
+The frontend mirrors this (defense-in-depth / UX only — the backend checks above are the real enforcement): `authGuard` (`frontend/src/app/core/guards/auth.guard.ts`) accepts an optional `data: { deniedRoles: [...] }` on a route, applied to `test-stroop`/`test-gonogo`/`test-flanker` to deny `RESEARCHER` (redirects to `/dashboard`, not `/login`, since the user is authenticated, just not authorized for that route). `PatientDashboardComponent` also hides the "+ Nuovo Paziente" and "Avvia Test" actions for `RESEARCHER` via an `isReadOnlyRole` computed signal.
+
 ### Patient context is shared state, not a route param
-The Angular dashboard and all three experiment components (Stroop/Go-No-Go/Flanker) share a single selected patient via `PatientContextService` (a signal-based service), not a route param. Only the dashboard's `ngOnInit` calls `loadPatients()`. Navigating straight to `/test-stroop` etc. by URL bypasses that and the experiment correctly shows a "no patient selected" guard instead of crashing — this is expected, not a bug, when testing a route in isolation.
+The Angular dashboard and all three experiment components (Stroop/Go-No-Go/Flanker) share a single selected patient via `PatientContextService` (a signal-based service), not a route param. Only the dashboard's `ngOnInit` calls `loadPatients()`. Navigating straight to `/test-stroop` etc. by URL bypasses that and the experiment correctly shows a "no patient selected" guard instead of crashing — this is expected, not a bug, when testing a route in isolation. Exception: `RESEARCHER` never reaches that guard at all — `authGuard`'s `deniedRoles` check redirects to `/dashboard` first (see "Auth & authorization" above).
 
 ### Frontend has no zone.js — state driving templates must be Signals
 This app runs zoneless (no `zone.js` polyfill, no explicit `provideZonelessChangeDetection()` either — Angular 22's default). Signal writes notify the change-detection scheduler; **plain field mutations do not**, even from an `@HostListener` or `setTimeout` callback — the view can silently go stale. All three experiment components' trial-state machines (`currentState`, `activeTrial`, etc.) are Signals for exactly this reason. If you add new component state that drives the template, it must be a Signal.
