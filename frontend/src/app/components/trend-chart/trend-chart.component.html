@@ -1,0 +1,131 @@
+<div class="tc-root">
+  @if (!hasData()) {
+    <p class="tc-empty">{{ emptyMessage() }}</p>
+  } @else if (showTable()) {
+    <div class="tc-table-wrap">
+      <table class="tc-table">
+        <caption class="tc-sr-only">{{ ariaLabel() }}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">{{ seriesLabel() }}{{ unit() ? ' (' + unit() + ')' : '' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of plotted(); track p.index) {
+            <tr>
+              <td>{{ p.dateFull }}</td>
+              <td class="tc-table-value">{{ formatValue(p.value) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="tc-plot-wrap">
+      <svg
+        #svgEl
+        [attr.viewBox]="viewBox"
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        [attr.aria-label]="ariaLabel()"
+      >
+        <!-- Griglia orizzontale hairline (recessiva) -->
+        @for (line of gridlines(); track line.y) {
+          <line
+            class="tc-grid"
+            [attr.x1]="plotLeft"
+            [attr.x2]="plotRight"
+            [attr.y1]="line.y"
+            [attr.y2]="line.y"
+            vector-effect="non-scaling-stroke"
+          />
+          <text class="tc-axis-label" [attr.x]="plotLeft - 8" [attr.y]="line.y" text-anchor="end" dominant-baseline="middle">
+            {{ line.label }}
+          </text>
+        }
+
+        <!-- Linea dello zero, se il dominio attraversa lo zero -->
+        @if (zeroLineY(); as zy) {
+          <line
+            class="tc-baseline"
+            [attr.x1]="plotLeft"
+            [attr.x2]="plotRight"
+            [attr.y1]="zy"
+            [attr.y2]="zy"
+            vector-effect="non-scaling-stroke"
+          />
+        }
+
+        <!-- Etichette asse X (sottocampionate per evitare collisioni) -->
+        @for (p of xTicks(); track p.index) {
+          <text class="tc-axis-label" [attr.x]="p.x" [attr.y]="plotBottom + 18" text-anchor="middle">
+            {{ p.dateShort }}
+          </text>
+        }
+
+        <!-- Area (10% di opacità, un velo, mai un blocco saturo) -->
+        <path class="tc-area" [attr.d]="areaPath()" />
+
+        <!-- Linea, 2px, giunzioni arrotondate -->
+        <path class="tc-line" [attr.d]="linePath()" vector-effect="non-scaling-stroke" />
+
+        <!-- Marcatore di fine linea con anello di superficie ed etichetta diretta -->
+        @if (lastPoint(); as last) {
+          <circle class="tc-marker" [attr.cx]="last.x" [attr.cy]="last.y" r="5" />
+          <text class="tc-end-label" [attr.x]="last.x + 9" [attr.y]="last.y" dominant-baseline="middle">
+            {{ formatValueCompact(last.value) }}
+          </text>
+        }
+
+        <!-- Crosshair + marcatore attivo -->
+        @if (hovered(); as h) {
+          <line
+            class="tc-crosshair"
+            [attr.x1]="h.x"
+            [attr.x2]="h.x"
+            [attr.y1]="plotTop"
+            [attr.y2]="plotBottom"
+            vector-effect="non-scaling-stroke"
+          />
+          <circle class="tc-marker tc-marker-active" [attr.cx]="h.x" [attr.cy]="h.y" r="6" />
+        }
+
+        <!-- Superficie di interazione: unica area attiva per hover/focus/tastiera -->
+        <rect
+          class="tc-hit-area"
+          [attr.x]="plotLeft"
+          [attr.y]="0"
+          [attr.width]="plotRight - plotLeft"
+          [attr.height]="VIEW_HEIGHT"
+          tabindex="0"
+          [attr.aria-label]="ariaLabel() + '. Usa le frecce sinistra e destra per esplorare i valori nel tempo.'"
+          (pointermove)="onPointerMove($event, svgEl)"
+          (pointerleave)="onPointerLeave()"
+          (focus)="onFocus()"
+          (blur)="onBlur()"
+          (keydown)="onKeydown($event)"
+        />
+      </svg>
+
+      @if (hovered(); as h) {
+        <div class="tc-tooltip" [style.left.%]="tooltipLeftPct(h)" [style.top.%]="tooltipTopPct(h)">
+          <div class="tc-tooltip-row">
+            <span class="tc-linekey"></span>
+            <span class="tc-tooltip-value">{{ formatValue(h.value) }}</span>
+          </div>
+          <div class="tc-tooltip-label">{{ seriesLabel() }}</div>
+          <div class="tc-tooltip-date">{{ h.dateFull }}</div>
+        </div>
+      }
+
+      <div class="tc-sr-only" aria-live="polite">{{ liveDescription() }}</div>
+    </div>
+  }
+
+  @if (hasData()) {
+    <button type="button" class="tc-table-toggle" (click)="toggleTable()">
+      {{ showTable() ? 'Vedi come grafico' : 'Vedi come tabella' }}
+    </button>
+  }
+</div>

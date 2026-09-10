@@ -11,6 +11,7 @@ type TestState = 'START_SCREEN' | 'FIXATION' | 'STIMULUS' | 'FEEDBACK' | 'ISI' |
 
 import { Component, OnInit, HostListener, inject, NgZone, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { NeuroStatsService, TrialData } from '../../../core/services/neuro-stats.service';
 import { generateBalancedTrials, TrialConfig } from '../utils/trial-balancer';
 import { PatientContextService } from '../../../core/services/patient-context.service';
@@ -24,66 +25,13 @@ export function calculateReactionTimeMs(responseTime: number, stimulusTime: numb
   standalone: true,
   imports: [CommonModule],
   styleUrl: './stroop-game.component.scss',
-  template: `
-    <div
-      class="viewport"
-      style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #121212; color: white; font-family: sans-serif; user-select: none;"
-    >
-      <!-- Schermata Iniziale -->
-      @if (currentState() === 'START_SCREEN') {
-        <div style="text-align: center;">
-          <h2>Test di Stroop con Monitoraggio Errori</h2>
-          <p>Rispondi il più velocemente possibile evitando gli errori.</p>
-          <button
-            (click)="startExperiment()"
-            style="padding: 12px 24px; font-size: 1.2rem; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; margin-top: 15px;"
-          >
-            Inizia
-          </button>
-        </div>
-      }
-
-      <!-- Croce di Fissazione Calibrata -->
-      @if (currentState() === 'FIXATION') {
-        <div class="fixation-cross">+</div>
-      }
-
-      <!-- Stimolo Target Calibrato con classi a contrasto controllato -->
-      @if (currentState() === 'STIMULUS') {
-        <div
-          class="stroop-stimulus"
-          [ngClass]="{
-            'color-target-red': activeTrial()?.color === 'red',
-            'color-target-green': activeTrial()?.color === 'green',
-          }"
-        >
-          {{ activeTrial()?.word }}
-        </div>
-      }
-
-      <!-- Feedback d'Errore Scientifico -->
-      @if (currentState() === 'FEEDBACK') {
-        <div class="feedback-error shake-animation">X</div>
-      }
-
-      <!-- Inter-Stimulus Interval -->
-      @if (currentState() === 'ISI') {
-        <div></div>
-      }
-
-      <!-- Schermata di Fine -->
-      @if (currentState() === 'COMPLETED') {
-        <div style="text-align: center;">
-          <h3>Elaborazione e salvataggio dei parametri esecutivi...</h3>
-        </div>
-      }
-    </div>
-  `,
+  templateUrl: './stroop-game.component.html',
 })
 export class StroopGameComponent implements OnInit {
   private zone = inject(NgZone);
   private statsService = inject(NeuroStatsService);
   private patientContext = inject(PatientContextService);
+  private router = inject(Router);
 
   currentState = signal<TestState>('START_SCREEN');
 
@@ -96,6 +44,8 @@ export class StroopGameComponent implements OnInit {
   private resultsAccumulator: TrialData[] = [];
 
   ngOnInit(): void {
+    // Ricorda il paradigma corrente, così la dashboard mostra la vista giusta al ritorno
+    this.patientContext.lastTestType.set('STROOP');
     this.trialSequence = generateBalancedTrials(this.totalTrialsCount);
   }
 
@@ -109,6 +59,10 @@ export class StroopGameComponent implements OnInit {
     this.currentPointer = 0;
     this.resultsAccumulator = [];
     this.executeTrialLifecycle();
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   /**

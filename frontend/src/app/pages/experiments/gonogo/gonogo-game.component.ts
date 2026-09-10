@@ -6,11 +6,12 @@
  */
 
 import { Component, OnInit, HostListener, inject, NgZone, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { NeuroStatsService } from '../../../core/services/neuro-stats.service';
 import { PatientContextService } from '../../../core/services/patient-context.service';
 
-type GoNoGoState = 'FIXATION' | 'STIMULUS' | 'ISI';
+type GoNoGoState = 'START_SCREEN' | 'FIXATION' | 'STIMULUS' | 'ISI' | 'COMPLETED';
 type StimulusType = 'GO' | 'NO_GO';
 
 interface GoNoGoTrialResult {
@@ -25,43 +26,15 @@ interface GoNoGoTrialResult {
   selector: 'app-gonogo-test',
   standalone: true,
   imports: [],
-  template: `
-    <div
-      class="experiment-viewport"
-      style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; cursor: none; user-select: none;"
-    >
-      @if (!hasPatient) {
-        <div style="color: white; text-align: center; font-family: sans-serif;">
-          <p>Nessun paziente selezionato.</p>
-          <p>Torna alla dashboard e seleziona un paziente prima di iniziare il test.</p>
-        </div>
-      }
-
-      @if (hasPatient) {
-        @if (currentState() === 'FIXATION') {
-          <div style="font-size: 6rem; color: #7f8c8d;">+</div>
-        }
-        <!-- Stimolo Visivo: Forma geometrica invece del testo per isolare i processi motori da quelli verbali -->
-        @if (currentState() === 'STIMULUS') {
-          <div
-            [style.border-radius]="currentStimulusType() === 'GO' ? '50%' : '0%'"
-            [style.background-color]="currentStimulusType() === 'GO' ? '#2ecc71' : '#e74c3c'"
-            style="width: 150px; height: 150px; transform: translateZ(0);"
-          ></div>
-        }
-        @if (currentState() === 'ISI') {
-          <div></div>
-        }
-      }
-    </div>
-  `,
+  templateUrl: './gonogo-game.component.html',
 })
 export class GoNoGoGameComponent implements OnInit {
   private zone = inject(NgZone);
   private statsService = inject(NeuroStatsService);
   private patientContext = inject(PatientContextService);
+  private router = inject(Router);
 
-  currentState = signal<GoNoGoState>('ISI');
+  currentState = signal<GoNoGoState>('START_SCREEN');
   currentStimulusType = signal<StimulusType>('GO');
 
   private totalTrials = 30;
@@ -76,10 +49,19 @@ export class GoNoGoGameComponent implements OnInit {
     return !!this.patientContext.selectedPatientId();
   }
 
-  ngOnInit() {
-    if (this.hasPatient) {
-      this.executeTrial();
-    }
+  ngOnInit(): void {
+    // Ricorda il paradigma corrente, così la dashboard mostra la vista giusta al ritorno
+    this.patientContext.lastTestType.set('GO_NO_GO');
+  }
+
+  startExperiment(): void {
+    this.currentPointer = 0;
+    this.trialResults = [];
+    this.executeTrial();
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   private executeTrial() {
@@ -169,6 +151,7 @@ export class GoNoGoGameComponent implements OnInit {
   }
 
   private submitData() {
+    this.currentState.set('COMPLETED');
     // Invio del payload strutturato all'endpoint generico
     const payload = {
       patientId: this.patientContext.selectedPatientId()!,
@@ -176,7 +159,10 @@ export class GoNoGoGameComponent implements OnInit {
       trials: this.trialResults,
     };
     this.statsService.submitSession(payload).subscribe({
-      next: () => alert('Test Go/No-Go Salvato!'),
+      next: () => {
+        this.currentState.set('START_SCREEN');
+        alert('Test Go/No-Go Salvato!');
+      },
       error: (customError) => {
         if (customError.status === 0 || customError.status === 500) {
           this.statsService.saveSessionToLocalBackup(payload);
@@ -188,6 +174,7 @@ export class GoNoGoGameComponent implements OnInit {
             `Salvataggio della sessione fallito: ${customError.message || 'errore sconosciuto'}. I dati NON sono stati salvati.`,
           );
         }
+        this.currentState.set('START_SCREEN');
       },
     });
   }

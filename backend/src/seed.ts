@@ -8,7 +8,9 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import { Config } from './config/env.config';
 import { User } from './database/models/user.schema';
-import { Patient, TestSession } from './database/models/session.schema';
+import { Patient } from './database/models/patient.schema';
+import { TestSession } from './database/models/session.schema';
+import { NormativeData } from './database/models/normative.schema';
 import { estimateExGaussianParams } from './modules/sessions/exgaussian';
 
 /**
@@ -40,6 +42,41 @@ async function runSeed() {
         await User.deleteMany({});
         await Patient.deleteMany({});
         await TestSession.deleteMany({});
+        await NormativeData.deleteMany({});
+
+        // 1b. Popolazione di controllo (PLACEHOLDER)
+        // Valori inventati solo per far funzionare la pipeline dello Z-Score end-to-end:
+        // NON sono norme cliniche validate. Da sostituire con dati reali di standardizzazione
+        // (uno studio pubblicato o un campione di riferimento interno) prima di qualsiasi uso clinico.
+        console.log('📐 Popolamento dati normativi placeholder (popolazione di controllo)...');
+        const ADULT_BAND = { min: 18, max: 59 };
+        const ELDERLY_BAND = { min: 60, max: 110 };
+        const EDUCATION_BAND = { min: 0, max: 25 }; // Fascia unica e ampia: placeholder, non stratificato per scolarità
+
+        const normativePlaceholders: Array<{
+            testType: 'STROOP' | 'GO_NO_GO' | 'FLANKER';
+            metricName: 'INTERFERENCE_EFFECT' | 'FALSE_ALARMS_RATE' | 'TAU';
+            ageRange: { min: number; max: number };
+            populationMean: number;
+            populationStdDev: number;
+        }> = [
+            { testType: 'STROOP', metricName: 'INTERFERENCE_EFFECT', ageRange: ADULT_BAND, populationMean: 70, populationStdDev: 30 },
+            { testType: 'STROOP', metricName: 'INTERFERENCE_EFFECT', ageRange: ELDERLY_BAND, populationMean: 100, populationStdDev: 40 },
+            { testType: 'STROOP', metricName: 'TAU', ageRange: ADULT_BAND, populationMean: 90, populationStdDev: 35 },
+            { testType: 'STROOP', metricName: 'TAU', ageRange: ELDERLY_BAND, populationMean: 130, populationStdDev: 50 },
+            { testType: 'GO_NO_GO', metricName: 'FALSE_ALARMS_RATE', ageRange: ADULT_BAND, populationMean: 15, populationStdDev: 8 },
+            { testType: 'GO_NO_GO', metricName: 'FALSE_ALARMS_RATE', ageRange: ELDERLY_BAND, populationMean: 20, populationStdDev: 10 },
+            { testType: 'GO_NO_GO', metricName: 'TAU', ageRange: ADULT_BAND, populationMean: 80, populationStdDev: 30 },
+            { testType: 'GO_NO_GO', metricName: 'TAU', ageRange: ELDERLY_BAND, populationMean: 110, populationStdDev: 40 },
+            { testType: 'FLANKER', metricName: 'INTERFERENCE_EFFECT', ageRange: ADULT_BAND, populationMean: 60, populationStdDev: 25 },
+            { testType: 'FLANKER', metricName: 'INTERFERENCE_EFFECT', ageRange: ELDERLY_BAND, populationMean: 85, populationStdDev: 35 },
+            { testType: 'FLANKER', metricName: 'TAU', ageRange: ADULT_BAND, populationMean: 85, populationStdDev: 30 },
+            { testType: 'FLANKER', metricName: 'TAU', ageRange: ELDERLY_BAND, populationMean: 120, populationStdDev: 45 },
+        ];
+
+        await NormativeData.insertMany(
+            normativePlaceholders.map((entry) => ({ ...entry, educationYearsRange: EDUCATION_BAND }))
+        );
 
         // 2. Creazione dell'Utente Clinico di Test
         console.log('👤 Creazione dell\'utente clinico di test...');

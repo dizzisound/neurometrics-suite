@@ -16,70 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
   selector: 'app-login',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
-  template: `
-    <div
-      class="login-wrapper"
-      style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f6f9; font-family: sans-serif;"
-    >
-      <div
-        class="login-card"
-        style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px;"
-      >
-        <h2 style="margin-bottom: 10px; color: #333; text-align: center;">NeuroMetrics Platform</h2>
-        <p style="color: #666; text-align: center; font-size: 0.9rem; margin-bottom: 30px;">
-          Accesso riservato al personale clinico autorizzato
-        </p>
-
-        <!-- Messaggio di errore reattivo con i Signals -->
-        @if (errorMessage()) {
-          <div
-            style="background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 4px; margin-bottom: 20px; font-size: 0.9rem; border: 1px solid #f5c6cb;"
-          >
-            {{ errorMessage() }}
-          </div>
-        }
-
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-          <div class="form-group" style="margin-bottom: 20px;">
-            <label for="login-username" style="display: block; margin-bottom: 6px; font-weight: 600; color: #444;"
-              >Username</label
-            >
-            <input
-              id="login-username"
-              type="text"
-              formControlName="username"
-              style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem;"
-            />
-          </div>
-
-          <div class="form-group" style="margin-bottom: 25px;">
-            <label for="login-password" style="display: block; margin-bottom: 6px; font-weight: 600; color: #444;"
-              >Password</label
-            >
-            <input
-              id="login-password"
-              type="password"
-              formControlName="password"
-              style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem;"
-            />
-          </div>
-
-          <button
-            type="submit"
-            [disabled]="loginForm.invalid || isLoading()"
-            style="width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;"
-          >
-            {{ isLoading() ? 'Autenticazione in corso...' : 'Accedi' }}
-          </button>
-        </form>
-
-        <p style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: #666;">
-          Non hai un account?
-          <a routerLink="/register" style="color: #007bff; text-decoration: none;">Registrati</a>
-        </p>
-      </div>
-    </div>
-  `,
+  templateUrl: './login.component.html',
 })
 export class LoginComponent {
   private fb = inject(FormBuilder);

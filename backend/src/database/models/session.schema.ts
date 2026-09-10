@@ -1,32 +1,14 @@
 /*
- * Definizione degli schemi Mongoose per pazienti, trial e sessioni di test
+ * Definizione degli schemi Mongoose per i trial e le sessioni di test.
+ * Lo schema del paziente vive in patient.schema.ts.
  *
  */
 
 import { Schema, model, Document } from 'mongoose';
 
-// 1. INTERFACCIA E SCHEMA PAZIENTE
-export interface IPatient extends Document {
-    patientCode: string; // ID anonimizzato per privacy (es. "PAZ_2026_001")
-    clinicianId: Schema.Types.ObjectId;
-    birthDate: Date;
-    educationYears: number; // Fondamentale per la correzione statistica futura
-    gender: 'M' | 'F' | 'O';
-    createdAt: Date;
-}
-
-const PatientSchema = new Schema<IPatient>({
-    patientCode: { type: String, required: true, unique: true },
-    clinicianId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    birthDate: { type: Date, required: true },
-    educationYears: { type: Number, required: true, min: 1 },
-    gender: { type: String, enum: ['M', 'F', 'O'], required: true },
-    createdAt: { type: Date, default: Date.now }
-});
-
-// 2. SCHEMA DEL SINGOLO TRIAL (Sotto-documento incorporato)
+// 1. SCHEMA DEL SINGOLO TRIAL (Sotto-documento incorporato)
 // stimulus/stimulusColor/isCongruent/correctResponse/userResponse: solo Stroop/Flanker; stimulusType/actionTaken: solo Go/No-Go
-interface ITrial {
+interface Trial {
     trialNumber: number;
     stimulus?: string;       // es. "ROSSO"
     stimulusColor?: string;  // es. "VERDE"
@@ -39,7 +21,7 @@ interface ITrial {
     reactionTimeMs: number; // Tempo catturato da Angular
 }
 
-const TrialSchema = new Schema<ITrial>({
+const TrialSchema = new Schema<Trial>({
     trialNumber: { type: Number, required: true },
     stimulus: { type: String },
     stimulusColor: { type: String },
@@ -52,12 +34,12 @@ const TrialSchema = new Schema<ITrial>({
     reactionTimeMs: { type: Number, required: true }
 });
 
-// 3. INTERFACCIA E SCHEMA SESSIONE DI TEST
-export interface ITestSession extends Document {
+// 2. INTERFACCIA E SCHEMA SESSIONE DI TEST
+export interface TestSessionDocument extends Document {
     patientId: Schema.Types.ObjectId; // Riferimento al paziente
     testType: 'STROOP' | 'GO_NO_GO' | 'FLANKER';
     sessionDate: Date;
-    trials: ITrial[]; // Array di tutti i trial eseguiti
+    trials: Trial[]; // Array di tutti i trial eseguiti
     // Campi calcolati dal backend a fine test (evitano ricalcoli continui)
     summaryStats?: {
         accuracyRate: number;      // Percentuale risposte corrette
@@ -76,10 +58,14 @@ export interface ITestSession extends Document {
             sigma: number;
             tau: number;
         }
+        // Confronto con la popolazione di controllo (NormativeData): null se non c'è una fascia
+        // normativa corrispondente (età/scolarità fuori standardizzazione) o campione insufficiente
+        zScorePrimary?: number | null;  // Metrica principale del paradigma (interferenza o falsi allarmi)
+        zScoreTau?: number | null;      // Parametro Tau ex-Gaussiano
     }
 }
 
-const TestSessionSchema = new Schema<ITestSession>({
+const TestSessionSchema = new Schema<TestSessionDocument>({
     patientId: { type: Schema.Types.ObjectId, ref: 'Patient', required: true },
     testType: { type: String, enum: ['STROOP', 'GO_NO_GO', 'FLANKER'], required: true },
     sessionDate: { type: Date, default: Date.now },
@@ -100,9 +86,10 @@ const TestSessionSchema = new Schema<ITestSession>({
             mu: Number,
             sigma: Number,
             tau: Number
-        }
+        },
+        zScorePrimary: { type: Number, default: null },
+        zScoreTau: { type: Number, default: null }
     }
 });
 
-export const Patient = model<IPatient>('Patient', PatientSchema);
-export const TestSession = model<ITestSession>('TestSession', TestSessionSchema);
+export const TestSession = model<TestSessionDocument>('TestSession', TestSessionSchema);

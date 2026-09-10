@@ -1,10 +1,10 @@
 /*
- * Controller per l'autenticazione degli utenti
+ * Router per l'autenticazione degli utenti
  * Gestisce la registrazione, il login e la protezione delle rotte tramite JWT
  *
  */
 
-import { Request, Response, Router, NextFunction } from 'express';
+import { Request, Response, Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../../database/models/user.schema';
@@ -57,25 +57,5 @@ authRouter.post('/auth/login', async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'Errore durante il login.' });
     }
 });
-
-/**
- * MIDDLEWARE di protezione degli endpoint clinici
- */
-export interface AuthenticatedRequest extends Request {
-    userContext?: { id: string; role: string };
-}
-
-export const verifyJwt = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Estrae il token dall'header 'Bearer <TOKEN>'
-
-    if (!token) return res.status(401).json({ error: 'Accesso negato. Token mancante.' });
-
-    jwt.verify(token, Config.JWT_SECRET, (err, decoded: any) => {
-        if (err) return res.status(403).json({ error: 'Token scaduto o non valido.' });
-        req.userContext = { id: decoded.id, role: decoded.role };
-        next();
-    });
-};
 
 export default authRouter;

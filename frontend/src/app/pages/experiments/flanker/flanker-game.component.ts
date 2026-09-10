@@ -6,11 +6,12 @@
  */
 
 import { Component, OnInit, HostListener, inject, NgZone, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { NeuroStatsService } from '../../../core/services/neuro-stats.service';
 import { PatientContextService } from '../../../core/services/patient-context.service';
 
-type FlankerState = 'FIXATION' | 'STIMULUS' | 'ISI';
+type FlankerState = 'START_SCREEN' | 'FIXATION' | 'STIMULUS' | 'ISI' | 'COMPLETED';
 
 interface FlankerTrial {
   stringDisplay: string;
@@ -32,45 +33,15 @@ interface FlankerTrialResult {
   selector: 'app-flanker-test',
   standalone: true,
   imports: [],
-  template: `
-    <!-- Utilizziamo i fogli di stile con luminanza controllata visti in precedenza -->
-    <div
-      class="experiment-viewport"
-      style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; cursor: none; user-select: none;"
-    >
-      @if (!hasPatient) {
-        <div style="color: white; text-align: center; font-family: sans-serif;">
-          <p>Nessun paziente selezionato.</p>
-          <p>Torna alla dashboard e seleziona un paziente prima di iniziare il test.</p>
-        </div>
-      }
-
-      @if (hasPatient) {
-        @if (currentState() === 'FIXATION') {
-          <div class="fixation-cross">+</div>
-        }
-        <!-- Stimolo Flanker: Utilizziamo font monospazio per garantire che la freccia centrale sia esattamente al centro millimetrico dello schermo -->
-        @if (currentState() === 'STIMULUS') {
-          <div
-            class="stroop-stimulus"
-            style="font-family: 'Courier New', Courier, monospace; letter-spacing: 12px; color: #ecf0f1;"
-          >
-            {{ activeTrial()?.stringDisplay }}
-          </div>
-        }
-        @if (currentState() === 'ISI') {
-          <div></div>
-        }
-      }
-    </div>
-  `,
+  templateUrl: './flanker-game.component.html',
 })
 export class FlankerGameComponent implements OnInit {
   private zone = inject(NgZone);
   private statsService = inject(NeuroStatsService);
   private patientContext = inject(PatientContextService);
+  private router = inject(Router);
 
-  currentState = signal<FlankerState>('ISI');
+  currentState = signal<FlankerState>('START_SCREEN');
   activeTrial = signal<FlankerTrial | null>(null);
 
   private totalTrials = 20;
@@ -91,15 +62,25 @@ export class FlankerGameComponent implements OnInit {
     return !!this.patientContext.selectedPatientId();
   }
 
-  ngOnInit() {
-    if (this.hasPatient) {
-      this.generateBalancedSequence();
-      this.executeLifecycle();
-    }
+  ngOnInit(): void {
+    // Ricorda il paradigma corrente, così la dashboard mostra la vista giusta al ritorno
+    this.patientContext.lastTestType.set('FLANKER');
+  }
+
+  startExperiment(): void {
+    this.currentPointer = 0;
+    this.trialResults = [];
+    this.generateBalancedSequence();
+    this.executeLifecycle();
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   private generateBalancedSequence() {
     // Generiamo una lista equilibrata al 50% tra congruenti e incongruenti usando la logica del modulo Fisher-Yates sviluppato in precedenza
+    this.balancedSequence = [];
     for (let i = 0; i < this.totalTrials / 4; i++) {
       this.balancedSequence.push(...this.stimuliPool.map((s) => ({ ...s })));
     }
@@ -161,7 +142,7 @@ export class FlankerGameComponent implements OnInit {
   }
 
   private finalize() {
-    this.currentState.set('ISI');
+    this.currentState.set('COMPLETED');
     const payload = {
       patientId: this.patientContext.selectedPatientId()!,
       testType: 'FLANKER' as const,
@@ -169,7 +150,10 @@ export class FlankerGameComponent implements OnInit {
     };
 
     this.statsService.submitSession(payload).subscribe({
-      next: () => alert('Test Flanker completato con successo!'),
+      next: () => {
+        this.currentState.set('START_SCREEN');
+        alert('Test Flanker completato con successo!');
+      },
       error: (customError) => {
         if (customError.status === 0 || customError.status === 500) {
           this.statsService.saveSessionToLocalBackup(payload);
@@ -181,6 +165,7 @@ export class FlankerGameComponent implements OnInit {
             `Salvataggio della sessione fallito: ${customError.message || 'errore sconosciuto'}. I dati NON sono stati salvati.`,
           );
         }
+        this.currentState.set('START_SCREEN');
       },
     });
   }

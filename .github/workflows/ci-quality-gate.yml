@@ -1,0 +1,67 @@
+# Pipeline di integrazione continua per NeuroMetrics
+# Esegue test e validazione sia per il backend (Node.js) che per il frontend (Angular)
+
+name: NeuroMetrics CI Quality Gate
+
+# 1. TRIGGER: Quando far partire la pipeline
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # --- JOB 1: TEST E VALIDAZIONE DEL BACKEND (NODE.JS) ---
+  backend-validation:
+    runs-on: ubuntu-latest # Utilizza l'ultima versione di Linux Ubuntu nel cloud
+
+    steps:
+    - name: Scarica il codice sorgente
+      uses: actions/checkout@v4
+
+    - name: Configura l'ambiente Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24' # vitest 5 e Angular CLI 22 richiedono Node >=22.12 (backend) / >=22.22.3 (frontend); '20' fallisce all'avvio
+        cache: 'npm'
+        cache-dependency-path: './backend/package.json'
+
+    - name: Installa le dipendenze del Backend
+      run: |
+        cd backend
+        npm ci # Installa le dipendenze in modo pulito e rigido dal package-lock.json
+
+    - name: Esegui gli Unit Test Statistici (Vitest)
+      run: |
+        cd backend
+        npm test -- --passWithNoTests # Avvia Vitest verificando l'algoritmo Ex-Gaussiano
+
+  # --- JOB 2: TEST E VALIDAZIONE DEL FRONTEND (ANGULAR) ---
+  frontend-validation:
+    runs-on: ubuntu-latest
+    needs: backend-validation # Fa partire i test Angular solo se il backend è matematicamente sano
+
+    steps:
+    - name: Scarica il codice sorgente
+      uses: actions/checkout@v4
+
+    - name: Configura l'ambiente Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: 'npm'
+        cache-dependency-path: './frontend/package.json'
+
+    - name: Installa le dipendenze del Frontend
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Esegui i Test di Bilanciamento dei Trial (Angular CLI)
+      run: |
+        cd frontend
+        # Nota: questo progetto usa il runner Vitest di Angular 22 (@angular/build:unit-test),
+        # non Karma — niente browser reale necessario, quindi niente flag --browsers=ChromeHeadless
+        # (che qui richiederebbe pacchetti @vitest/browser-* non installati e farebbe fallire il job).
+        # Eseguito in modalità "single-run" per non lasciare il terminale appeso.
+        npx ng test --no-watch --no-progress
