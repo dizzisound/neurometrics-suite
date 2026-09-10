@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": [
+        "-d", "Ubuntu", "--", "bash", "-lc",
+        "export PATH=\"$HOME/.nvm/versions/node/v24.16.0/bin:$PATH\"; cd /home/dizzi/Github/Angular/neuroscience-test/frontend && npx ng serve --port 4200"
+      ],
+      "port": 4200
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": [
+        "-d", "Ubuntu", "--", "bash", "-lc",
+        "export PATH=\"$HOME/.nvm/versions/node/v24.16.0/bin:$PATH\"; cd /home/dizzi/Github/Angular/neuroscience-test/backend && npm run dev"
+      ],
+      "port": 3000
+    }
+  ]
+}
