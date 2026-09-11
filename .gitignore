@@ -1,0 +1,4 @@
+# Variabili d'ambiente per docker-compose (interpolate in docker-compose.yml)
+.env
+.env.*
+!.env.example
