@@ -11,7 +11,7 @@ This is **two independently-versioned Node projects** in one folder, not a works
 
 The root `package.json` (`neurometrics-suite`) only exists to run both at once: `npm run start-all` (uses `concurrently`).
 
-**Git**: the whole tree (root, `backend/`, `frontend/`) is tracked in a single repo at the root, currently on branch `feature/02-roles-implementation`. There is no separate nested repo under `frontend/` despite what directory-tree docs elsewhere may suggest.
+**Git**: the whole tree (root, `backend/`, `frontend/`) is tracked in a single repo at the root. There is no separate nested repo under `frontend/` despite what directory-tree docs elsewhere may suggest.
 
 ## Common commands
 
@@ -77,6 +77,9 @@ This app runs zoneless (no `zone.js` polyfill, no explicit `provideZonelessChang
 
 ### Statistics pipeline
 `backend/src/modules/sessions/data-cleaner.ts`'s `NeuroDataCleaner.cleanByRobustMAD` does median/MAD-based outlier exclusion — **but only when the input array has ≥5 elements**; smaller subsets (common for a per-condition split of a 20-trial run) pass through completely unfiltered, physiological floor included. Don't assume outliers are always excluded from summary stats. `exgaussian.ts` implements ex-Gaussian moment estimation (μ, σ, τ) from scratch — see `exgaussian.spec.ts` for the reference test cases.
+
+### Normative comparison (Z-scores)
+`computeClinicalZScore` (`backend/src/utils/zscore.helper.ts`) looks up a `NormativeData` row (`backend/src/database/models/normative.schema.ts`) matching the patient's age/education band + `testType` + `metricName`, and returns `(patientValue - populationMean) / populationStdDev`, or `null` if no band matches (not an error — e.g. a patient outside every seeded band). It's computed once, server-side, in `POST /sessions` (`sessions.routes.ts`) and cached on `summaryStats.zScorePrimary`/`zScoreTau` — not recomputed on read. `seed.ts`'s normative rows are **explicitly placeholder values, not validated clinical norms** (see its own comment). All three metrics (`interferenceEffect`, `falseAlarmRate`, `tau`) are "higher = worse", so an impaired patient scores a **positive** Z — the severity thresholds in both the PDF report and the dashboard badge check `zScore >= 1.5/2.0`, not `<=`. Getting this backwards is a real, previously-shipped bug (inverted severity direction), not a hypothetical.
 
 ### API base URL
 Frontend services (`AuthService`, `NeuroStatsService`) call the backend directly at a hardcoded `http://localhost:3000/api...`, not through the dev-server proxy. `proxy.conf.json` (`/api` → `localhost:3000`) exists and is used only by `DataService`'s demo `/api/test` call. Don't assume all HTTP calls go through the proxy.
