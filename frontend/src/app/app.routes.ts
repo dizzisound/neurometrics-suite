@@ -6,6 +6,7 @@
  */
 
 import { Routes } from '@angular/router';
+import { HomeComponent } from './pages/home/home.component';
 import { LoginComponent } from './pages/login/login.component';
 import { RegisterComponent } from './pages/register/register.component';
 import { PatientDashboardComponent } from './pages/dashboard/patient-dashboard.component';
@@ -26,17 +27,20 @@ export const routes: Routes = [
     {
         path: 'test-stroop',
         component: StroopGameComponent,
-        canActivate: [authGuard] // Rotta protetta
+        canActivate: [authGuard], // Rotta protetta
+        data: { deniedRoles: ['RESEARCHER'] } // Sola lettura: non può avviare sessioni di test
     },
     {
         path: 'test-gonogo',
         component: GoNoGoGameComponent,
-        canActivate: [authGuard] // Rotta protetta
+        canActivate: [authGuard], // Rotta protetta
+        data: { deniedRoles: ['RESEARCHER'] }
     },
     {
         path: 'test-flanker',
         component: FlankerGameComponent,
-        canActivate: [authGuard] // Rotta protetta
+        canActivate: [authGuard], // Rotta protetta
+        data: { deniedRoles: ['RESEARCHER'] }
     },
-    { path: '', redirectTo: '/login', pathMatch: 'full' }
+    { path: '', component: HomeComponent, pathMatch: 'full' }
 ];

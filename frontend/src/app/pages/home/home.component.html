@@ -1,0 +1,16 @@
+<section class="hero">
+  <div class="hero-content">
+    <h1>NeuroMetrics</h1>
+    <p class="tagline">
+      Piattaforma di valutazione neuropsicologica per la pratica clinica e la
+      ricerca: test di Stroop, Go/No-Go e Flanker con confronto normativo e
+      report clinici.
+    </p>
+
+    @if (authService.isAuthenticated()) {
+      <a routerLink="/dashboard" class="cta">Vai alla Dashboard</a>
+    } @else {
+      <a routerLink="/login" class="cta">Accedi alla piattaforma</a>
+    }
+  </div>
+</section>

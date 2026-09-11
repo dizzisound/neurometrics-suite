@@ -10,6 +10,7 @@ import { Component, OnInit, inject, signal, computed, effect } from '@angular/co
 
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 import { NeuroStatsService, SessionSummary } from '../../core/services/neuro-stats.service';
 import { PatientContextService, TestParadigm } from '../../core/services/patient-context.service';
 import {
@@ -30,7 +31,11 @@ type SelectedTest = TestParadigm;
 export class PatientDashboardComponent implements OnInit {
   private statsService = inject(NeuroStatsService);
   private router = inject(Router);
+  private authService = inject(AuthService);
   protected patientContext = inject(PatientContextService);
+
+  // RESEARCHER ha accesso di sola lettura: niente creazione pazienti né avvio di nuove sessioni di test
+  protected isReadOnlyRole = computed(() => this.authService.userRole() === 'RESEARCHER');
 
   // 1. SIGNALS DI STATO
   // Inizializziamo dal paradigma su cui il clinico ha lavorato per ultimo (dashboard o

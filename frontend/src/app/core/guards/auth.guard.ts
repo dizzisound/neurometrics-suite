@@ -3,24 +3,31 @@
  * Controlla la presenza di un token JWT nel localStorage
  * Se il token è presente, permette l'accesso alla rotta
  * Altrimenti, reindirizza alla pagina di login
- * Utilizza il router per il reindirizzamento in caso di mancata autenticazione
- * 
+ *
+ * Supporta anche un controllo di ruolo opzionale tramite i dati della rotta:
+ * `data: { deniedRoles: ['RESEARCHER'] }` nega l'accesso a quel ruolo e
+ * reindirizza alla dashboard invece che al login (l'utente è comunque
+ * autenticato, solo non autorizzato a quella specifica rotta).
  */
 
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (route) => {
     const router = inject(Router);
     const token = localStorage.getItem('neuro_token');
 
-    if (token) {
-        // Nota avanzata: Qui potresti anche decodificare il JWT lato client 
-        // per controllare la scadenza o i ruoli (es. route.data['role'])
-        return true;
+    if (!token) {
+        router.navigate(['/login']);
+        return false;
     }
 
-    // Se non autenticato, reindirizza alla pagina di login
-    router.navigate(['/login']);
-    return false;
+    const deniedRoles = route.data['deniedRoles'] as string[] | undefined;
+    const role = localStorage.getItem('neuro_role');
+    if (deniedRoles && role && deniedRoles.includes(role)) {
+        router.navigate(['/dashboard']);
+        return false;
+    }
+
+    return true;
 };

@@ -2,6 +2,9 @@
  * Servizio per la verifica di connessione al backend
  * Interroga l'endpoint demo /api/test tramite HttpClient
  *
+ * Attualmente non utilizzato da nessun componente (era chiamato solo dal
+ * banner di debug rimosso da AppComponent) — lasciato per un futuro
+ * health-check, non cancellato.
  */
 
 import { Injectable, inject } from '@angular/core';
