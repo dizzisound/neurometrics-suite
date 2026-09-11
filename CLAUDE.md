@@ -26,6 +26,8 @@ npm test              # vitest run --coverage
 npm run lint          # eslint . --ext .ts
 npm run clean          # rm -rf dist
 ```
+Single test: `npx vitest run src/path/to/file.spec.ts`, or `-t "pattern"` to filter by test name.
+
 **`npm run dev` (tsx watch) never type-checks** — it only strips types. A change can run fine under `npm run dev` while `npm run build`/`npx tsc --noEmit` fails. Always run `npm run build` before considering backend work done.
 
 Backend uses a **dual TypeScript package alias** because TypeScript 7 (`@typescript/native`) ships no programmatic compiler API, which `typescript-eslint` needs:
@@ -44,6 +46,8 @@ npm run build         # ng build --configuration production — real type-check 
 npm test              # ng test — runs via @angular/build:unit-test with the Vitest runner (not Karma/Jasmine)
 npm run lint          # ng lint (@angular-eslint, includes template + accessibility rules)
 ```
+Single test: `ng test --include src/path/to/file.spec.ts`, or `--filter "pattern"` to match by suite/test name.
+
 Angular's own compiler (`ng build`) catches template-binding type errors that plain `tsc` won't — prefer `ng build` over bare `tsc --noEmit` when verifying frontend changes.
 
 ### CI
@@ -59,7 +63,7 @@ JWT-based (30 min expiry). Tokens are issued by `auth.routes.ts` (`/auth/login`)
 
 `role` is never accepted from the client on register or on patient creation — it's always assigned server-side.
 
-The frontend mirrors this (defense-in-depth / UX only — the backend checks above are the real enforcement): `authGuard` (`frontend/src/app/core/guards/auth.guard.ts`) accepts an optional `data: { deniedRoles: [...] }` on a route, applied to `test-stroop`/`test-gonogo`/`test-flanker` to deny `RESEARCHER` (redirects to `/dashboard`, not `/login`, since the user is authenticated, just not authorized for that route). `PatientDashboardComponent` also hides the "+ Nuovo Paziente" and "Avvia Test" actions for `RESEARCHER` via an `isReadOnlyRole` computed signal.
+The frontend mirrors this (defense-in-depth / UX only — the backend checks above are the real enforcement): `authGuard` (`frontend/src/app/core/guards/auth.guard.ts`) accepts an optional `data: { deniedRoles: [...] }` on a route, applied to `test-stroop`/`test-gonogo`/`test-flanker` to deny `RESEARCHER` (redirects to `/dashboard`, not `/login`, since the user is authenticated, just not authorized for that route). `PatientDashboardComponent` also hides the "+ Nuovo Paziente", "Avvia Test", and "Download PDF Report Clinico" actions for `RESEARCHER` via an `isReadOnlyRole` computed signal (the PDF report is the one endpoint that 403s RESEARCHER unconditionally — no de-identified fallback like CSV export has).
 
 ### Patient context is shared state, not a route param
 The Angular dashboard and all three experiment components (Stroop/Go-No-Go/Flanker) share a single selected patient via `PatientContextService` (a signal-based service), not a route param. Only the dashboard's `ngOnInit` calls `loadPatients()`. Navigating straight to `/test-stroop` etc. by URL bypasses that and the experiment correctly shows a "no patient selected" guard instead of crashing — this is expected, not a bug, when testing a route in isolation. Exception: `RESEARCHER` never reaches that guard at all — `authGuard`'s `deniedRoles` check redirects to `/dashboard` first (see "Auth & authorization" above).
@@ -90,5 +94,4 @@ This is a neuropsychological assessment tool (Stroop, Go/No-Go, Flanker reaction
 - Never present computed output as a medical diagnosis or make clinical claims beyond what's actually measured.
 - Preserve raw trial data distinct from cleaned/derived values — never silently discard observations or alter units when touching the statistics pipeline.
 - Treat reaction-time and timeout behavior as correctness-critical: consider browser event timing, invalid/missed/duplicate input, and aborted sessions.
-- Keep authentication, authorization, validation, and patient/session ownership checks explicit at API boundaries — don't rely on the frontend to enforce them.
-- Never put secrets, tokens, or real patient data in logs, exports, tests, or generated code.
+- Never put real patient data in logs, exports, tests, or generated code — the domain-specific risk here, beyond ordinary credential hygiene, is clinical data leaking into artifacts meant to be shared or committed.
