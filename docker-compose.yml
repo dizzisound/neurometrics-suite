@@ -1,0 +1,54 @@
+# version: '3.8' OBSOLETE
+
+services:
+  # --- 1. DATABASE SANITARIO ISOALTO ---
+  neuro-db:
+    image: mongo:6.0
+    container_name: neuro_mongo_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - neuro_data_volume:/data/db # Rende i dati dei pazienti persistenti sul disco fisso
+    networks:
+      - neuro-network
+
+  # --- 2. BACKEND STATISTICO (NODE.JS) ---
+  neuro-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: neuro_api_server
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://neuro-db:27017/neurometrics_db # Puntiamo al nome del servizio container
+      - MONGODB_USERNAME=${MONGODB_USERNAME} # Non usata per la connessione (neuro-db non ha auth), ma richiesta da env.config.ts
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET} # Eredita la chiave segreta dal file .env locale
+      - BCRYPT_SALT_ROUNDS=${BCRYPT_SALT_ROUNDS}
+    depends_on:
+      - neuro-db # Il server parte solo dopo che il database è pronto
+    networks:
+      - neuro-network
+
+  # --- 3. FRONTEND VISIVO (ANGULAR + NGINX) ---
+  neuro-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: neuro_web_client
+    ports:
+      - "80:80" # L'applicazione sarà raggiungibile digitando semplicemente 'localhost' nel browser
+    depends_on:
+      - neuro-backend
+    networks:
+      - neuro-network
+
+volumes:
+  neuro_data_volume: # Definizione del volume per non perdere i dati allo spegnimento dei container
+
+networks:
+  neuro-network:
+    driver: bridge
