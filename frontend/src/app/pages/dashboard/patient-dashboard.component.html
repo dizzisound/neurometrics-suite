@@ -180,6 +180,7 @@
       </button>
     </div>
     <!-- BOTTONE DOWNLOAD REPORT PDF -->
+    @if (!isReadOnlyRole()) {
     <div style="margin-bottom: 25px;">
       <button
         (click)="downloadPdfReport()"
@@ -188,6 +189,11 @@
         Download PDF Report Clinico
       </button>
     </div>
+    } @else {
+    <div style="margin-bottom: 25px; padding: 10px 16px; background: #eef2f7; border-radius: 4px; color: #6c757d; font-size: 0.9rem; max-width: fit-content;">
+      Ruolo Ricercatore: report PDF non disponibile (contiene dati identificabili).
+    </div>
+    }
     <!-- TITOLO DINAMICO GRAFICI -->
     <h3 style="color: #34495e; margin-bottom: 15px;">
       Visualizzazione Attiva: {{ activeTestLabel() }}
